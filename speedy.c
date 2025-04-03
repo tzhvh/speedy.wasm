@@ -46,6 +46,15 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// Add direct references to ensure these functions are included in the build
+extern void sonicEnableNonlinearSpeedup(void*, float);
+extern void sonicSetDurationFeedbackStrength(void*, float);
+
+void ensureFunctionsIncluded() {
+    sonicEnableNonlinearSpeedup(NULL, 0.0f);
+    sonicSetDurationFeedbackStrength(NULL, 0.0f);
+}
+
 /* A simple structure to implement a digital first order filter. */
 struct FirstOrderFilterStruct{
   float state;  // Double for extra precision for long time constants

@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "sonic2.h"
 #include "speedy.h"
+#include <emscripten.h>
 
 /*
  * Replace original libSonic with this shim to allow non-linear speedups of
@@ -596,7 +601,7 @@ int sonicFlushStream(sonicStream mySonicStream){
 }
 
 /* Enable non-linear speedup. */
-void sonicEnableNonlinearSpeedup(sonicStream mySonicStream, float factor) {
+EMSCRIPTEN_KEEPALIVE void sonicEnableNonlinearSpeedup(sonicStream mySonicStream, float factor) {
   assert(mySonicStream);
   speedyConnection mySpeedyConnector =
       (speedyConnection)sonicIntGetUserData(mySonicStream);
@@ -606,7 +611,7 @@ void sonicEnableNonlinearSpeedup(sonicStream mySonicStream, float factor) {
 }
 
 /* Set the strength of the feedback term connecting excess duration to speed. */
-void sonicSetDurationFeedbackStrength(sonicStream mySonicStream, float factor) {
+EMSCRIPTEN_KEEPALIVE void sonicSetDurationFeedbackStrength(sonicStream mySonicStream, float factor) {
   assert(mySonicStream);
   speedyConnection mySpeedyConnector =
       (speedyConnection)sonicIntGetUserData(mySonicStream);
@@ -722,3 +727,19 @@ int getSonicBufferSize(sonicStream mySonicStream) {
     return 0;
   }
 }
+
+// Add dummy references to ensure these functions are included in the build
+void dummyReferences() {
+    sonicEnableNonlinearSpeedup(NULL, 0.0f);
+    sonicSetDurationFeedbackStrength(NULL, 0.0f);
+}
+
+// Add a test function to reference the functions explicitly
+EMSCRIPTEN_KEEPALIVE void testFunctionReferences(void) {
+    sonicEnableNonlinearSpeedup(NULL, 0.0f);
+    sonicSetDurationFeedbackStrength(NULL, 0.0f);
+}
+
+#ifdef __cplusplus
+}
+#endif

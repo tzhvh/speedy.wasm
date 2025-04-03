@@ -23,43 +23,24 @@ JS_TARGET=$(WASM_TARGET).js
 WASM_FILE=$(WASM_TARGET).wasm
 
 # WASM Flags
-EM_FLAGS = -O3 -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s USE_ES6_IMPORT_META=0
-EM_FLAGS += -s ALLOW_MEMORY_GROWTH=1
-EM_FLAGS += -s EXPORTED_RUNTIME_METHODS=['cwrap','FS','HEAPF32','_malloc','_free']
-EM_FLAGS += -DKISS_FFT # Force KissFFT for WASM
-EM_FLAGS += -I$(SONIC_DIR_WASM) -I$(KISS_DIR_WASM)
-EM_FLAGS += -fPIC # Position Independent Code often needed
-
-# WASM Exported Functions (C names)
-EXPORTED_FUNCTIONS = [ \
-    '_sonicCreateStream', \
-    '_sonicDestroyStream', \
-    '_sonicWriteFloatToStream', \
-    '_sonicReadFloatFromStream', \
-    '_sonicFlushStream', \
-    '_sonicSetSpeed', \
-    '_sonicEnableNonlinearSpeedup', \
-    '_sonicSetDurationFeedbackStrength', \
-    '_sonicIntGetNumChannels', \
-    '_sonicIntGetSampleRate', \
-    '_sonicSamplesAvailable', \
-    '_malloc', \
-    '_free' \
-]
-EM_FLAGS += -s EXPORTED_FUNCTIONS=$(EXPORTED_FUNCTIONS)
+EM_FLAGS = -O3 -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s ALLOW_MEMORY_GROWTH=1
+EM_FLAGS += -s "EXPORTED_RUNTIME_METHODS=[\"cwrap\",\"FS\",\"HEAPF32\",\"_malloc\",\"_free\"]"
+EM_FLAGS += -s "EXPORTED_FUNCTIONS=[\"_sonicIntCreateStream\",\"_sonicIntDestroyStream\",\"_sonicIntWriteFloatToStream\",\"_sonicIntReadFloatFromStream\",\"_sonicIntFlushStream\",\"_sonicIntSetSpeed\",\"_sonicEnableNonlinearSpeedup\",\"_sonicSetDurationFeedbackStrength\",\"_sonicIntSamplesAvailable\",\"_testFunctionReferences\",\"_malloc\",\"_free\"]"
+EM_FLAGS += -DKISS_FFT -I$(SONIC_DIR_WASM) -I$(KISS_DIR_WASM) -fPIC
+EM_FLAGS += -DNDEBUG -DCHECK\(x\)=\(\(void\)0\) -DCHECK_EQ\(a,b\)=\(\(void\)0\) -DCHECK_NE\(a,b\)=\(\(void\)0\) -DLOG\(x\)=std::cerr
 
 # List of source files needed for the core library
-SPEEDY_CORE_SOURCES = soniclib.c speedy.c dynamic_time_warping.cc
+SPEEDY_CORE_SOURCES = speedy.c dynamic_time_warping.cc wasm_exports.c
 SPEEDY_CORE_OBJECTS_WASM = $(patsubst %.c,$(WASM_BUILD_DIR)/%.o,$(filter %.c,$(SPEEDY_CORE_SOURCES))) \
                            $(patsubst %.cc,$(WASM_BUILD_DIR)/%.o,$(filter %.cc,$(SPEEDY_CORE_SOURCES)))
 
 # Add sonic library sources needed (from submodule)
 SONIC_LIB_SOURCES = $(SONIC_DIR_WASM)/sonic.c
-SONIC_LIB_OBJECTS_WASM = $(patsubst %.c,$(WASM_BUILD_DIR)/sonic_%.o,$(SONIC_LIB_SOURCES))
+SONIC_LIB_OBJECTS_WASM = $(WASM_BUILD_DIR)/soniclib.o # Changed name to soniclib.o
 
 # KissFFT sources needed (from submodule)
-KISSFFT_SOURCES = $(KISS_DIR_WASM)/kiss_fft.c $(KISS_DIR_WASM)/tools/kiss_fftr.c
-KISSFFT_OBJECTS_WASM = $(patsubst %.c,$(WASM_BUILD_DIR)/kissfft_%.o,$(KISSFFT_SOURCES))
+KISSFFT_SOURCES = $(KISS_DIR_WASM)/kiss_fft.c $(KISS_DIR_WASM)/kiss_fftr.c
+KISSFFT_OBJECTS_WASM = $(WASM_BUILD_DIR)/kissfft_kiss_fft.o $(WASM_BUILD_DIR)/kissfft_kiss_fftr.o
 
 # --- Targets ---
 
@@ -87,26 +68,15 @@ $(JS_TARGET): $(SPEEDY_CORE_OBJECTS_WASM) $(SONIC_LIB_OBJECTS_WASM) $(KISSFFT_OB
 	@echo "WASM build complete: $(JS_TARGET) and $(WASM_FILE)"
 
 # Compile WASM objects
+# Disable optimizations for soniclib.c to ensure all symbols are included
+$(WASM_BUILD_DIR)/soniclib.o: $(SONIC_DIR_WASM)/sonic.c speedy.h sonic2.h $(SONIC_DIR_WASM)/sonic.h
+	$(EMCC) -O0 $(EM_FLAGS) -DSONIC_INTERNAL -c $< -o $@
+
 $(WASM_BUILD_DIR)/%.o: %.c speedy.h sonic2.h $(SONIC_DIR_WASM)/sonic.h dynamic_time_warping.h
 	$(EMCC) $(EM_FLAGS) -c $< -o $@
 
 $(WASM_BUILD_DIR)/%.o: %.cc speedy.h sonic2.h $(SONIC_DIR_WASM)/sonic.h dynamic_time_warping.h dynamic_time_warping.cc
 	$(EMPP) $(EM_FLAGS) -c $< -o $@
-
-# Compile Sonic library objects for WASM
-$(WASM_BUILD_DIR)/sonic_sonic.o: $(SONIC_DIR_WASM)/sonic.c $(SONIC_DIR_WASM)/sonic.h
-	$(EMCC) $(EM_FLAGS) -I$(SONIC_DIR_WASM) -c $< -o $@
-
-# Note: dynamic_time_warping.cc includes glog/logging.h and uses CHECK_EQ etc.
-# Emscripten doesn't provide glog directly. We need to stub it or remove it for WASM.
-# Easiest is to remove/stub. Let's try removing first.
-# Modify dynamic_time_warping.cc and .h to remove glog/CHECK_/assert() or replace with standard assert/prints for WASM build.
-# We will add stubs via CFLAGS for the WASM build.
-EM_FLAGS += -DNDEBUG # Disable standard assert
-EM_FLAGS += -DCHECK(x)=((void)0)
-EM_FLAGS += -DCHECK_EQ(a,b)=((void)0)
-EM_FLAGS += -DCHECK_NE(a,b)=((void)0)
-EM_FLAGS += -DLOG(x)=std::cerr
 
 # --- Native Targets ---
 
@@ -154,4 +124,3 @@ help:
 	@echo "  test          Placeholder for running native tests (requires setup)"
 	@echo "  clean         Remove build artifacts"
 	@echo "  help          Show this help message"
-	@echo "  wasm_deps     Ensure WASM build directories exist and build dependencies"

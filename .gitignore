@@ -1,0 +1,8 @@
+dist/speedy.js
+dist/speedy.wasm
+wasm_build/dynamic_time_warping.o
+wasm_build/kissfft_kiss_fft.o
+wasm_build/kissfft_kiss_fftr.o
+wasm_build/soniclib.o
+wasm_build/speedy.o
+wasm_build/wasm_exports.o
