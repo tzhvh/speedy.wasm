@@ -1,0 +1,6 @@
+[submodule "deps/sonic"]
+	path = deps/sonic
+	url = https://github.com/waywardgeek/sonic.git
+[submodule "deps/kissfft"]
+	path = deps/kissfft
+	url = https://github.com/mborgerding/kissfft.git
