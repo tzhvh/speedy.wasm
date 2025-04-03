@@ -66,6 +66,8 @@ $(JS_TARGET): $(SPEEDY_CORE_OBJECTS_WASM) $(SONIC_LIB_OBJECTS_WASM) $(KISSFFT_OB
 	@echo "Linking WASM module..."
 	$(EMPP) $(EM_FLAGS) $^ -o $@
 	@echo "WASM build complete: $(JS_TARGET) and $(WASM_FILE)"
+	@cp $(JS_TARGET) demo/speedy.js
+	@echo "Copied $(JS_TARGET) to demo/speedy.js"
 
 # Compile WASM objects
 # Disable optimizations for soniclib.c to ensure all symbols are included
