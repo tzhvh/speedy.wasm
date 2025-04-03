@@ -18,11 +18,8 @@
 #include <iomanip>
 #include <iostream>
 #include <utility>
-
-#include "glog/logging.h"
 #include <cassert>
-
-
+//#TODO: figure out "glog/logging.h" in wasm context
 DynamicTimeWarping::DynamicTimeWarping(
     std::size_t dimension,
     std::function<float(const std::vector<float>&, const std::vector<float>&)>
@@ -43,10 +40,12 @@ void DynamicTimeWarping::CheckInput(
     const std::vector<std::vector<float>>& sequence1,
     const std::vector<std::vector<float>>& sequence2) const {
   for (const auto& sequence : sequence1) {
-    CHECK_EQ(sequence.size(), dimension_);
+    // CHECK_EQ(sequence.size(), dimension_);
+    assert(sequence.size() == dimension_);
   }
   for (const auto& sequence : sequence2) {
-    CHECK_EQ(sequence.size(), dimension_);
+    // CHECK_EQ(sequence.size(), dimension_);
+    assert(sequence.size() == dimension_);
   }
 }
 
@@ -103,8 +102,10 @@ void DynamicTimeWarping::BestPathSequence(
     const std::vector<std::vector<float>>& sequence1,
     const std::vector<std::vector<float>>& sequence2, std::vector<int>* path1,
     std::vector<int>* path2) const {
-  CHECK_NE(nullptr, path1);
-  CHECK_NE(nullptr, path2);
+  // CHECK_NE(nullptr, path1);
+  // CHECK_NE(nullptr, path2);
+  assert(path1 != nullptr);
+  assert(path2 != nullptr);
   const auto height = sequence1.size();
   const auto width = sequence2.size();
 
