@@ -1,4 +1,4 @@
-import SpeedyWasmWrapper from './speedy-wasm-wrapper.js';
+import SpeedyWasmWrapper from '../dist/speedy-wasm-wrapper.js';
 
 const fileInput = document.getElementById('audioFile');
 const speedSlider = document.getElementById('speed');
