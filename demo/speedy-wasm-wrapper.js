@@ -20,17 +20,17 @@ class SpeedyWasmWrapper {
 
         // Expose WASM functions using cwrap
         this._wasmApi = {
-            createStream: this._module.cwrap('sonicCreateStream', 'number', ['number', 'number']),
-            destroyStream: this._module.cwrap('sonicDestroyStream', null, ['number']),
-            writeFloat: this._module.cwrap('sonicWriteFloatToStream', 'number', ['number', 'number', 'number']),
-            readFloat: this._module.cwrap('sonicReadFloatFromStream', 'number', ['number', 'number', 'number']),
-            flush: this._module.cwrap('sonicFlushStream', 'number', ['number']),
-            setSpeed: this._module.cwrap('sonicSetSpeed', null, ['number', 'number']),
+            createStream: this._module.cwrap('sonicIntCreateStream', 'number', ['number', 'number']),
+            destroyStream: this._module.cwrap('sonicIntDestroyStream', null, ['number']),
+            writeFloat: this._module.cwrap('sonicIntWriteFloatToStream', 'number', ['number', 'number', 'number']),
+            readFloat: this._module.cwrap('sonicIntReadFloatFromStream', 'number', ['number', 'number', 'number']),
+            flush: this._module.cwrap('sonicIntFlushStream', 'number', ['number']),
+            setSpeed: this._module.cwrap('sonicIntSetSpeed', null, ['number', 'number']),
             enableNonlinear: this._module.cwrap('sonicEnableNonlinearSpeedup', null, ['number', 'number']),
             setDurationFeedback: this._module.cwrap('sonicSetDurationFeedbackStrength', null, ['number', 'number']),
             getNumChannels: this._module.cwrap('sonicIntGetNumChannels', 'number', ['number']),
             getSampleRate: this._module.cwrap('sonicIntGetSampleRate', 'number', ['number']),
-            samplesAvailable: this._module.cwrap('sonicSamplesAvailable', 'number', ['number']),
+            samplesAvailable: this._module.cwrap('sonicIntSamplesAvailable', 'number', ['number']),
             malloc: this._module._malloc,
             free: this._module._free,
         };
