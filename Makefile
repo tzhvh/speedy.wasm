@@ -28,6 +28,7 @@ EM_FLAGS += -s "EXPORTED_RUNTIME_METHODS=[\"cwrap\",\"FS\",\"HEAPF32\",\"_malloc
 EM_FLAGS += -s "EXPORTED_FUNCTIONS=[\"_sonicIntCreateStream\",\"_sonicIntDestroyStream\",\"_sonicIntWriteFloatToStream\",\"_sonicIntReadFloatFromStream\",\"_sonicIntFlushStream\",\"_sonicIntSetSpeed\",\"_sonicEnableNonlinearSpeedup\",\"_sonicSetDurationFeedbackStrength\",\"_sonicIntSamplesAvailable\",\"_testFunctionReferences\",\"_malloc\",\"_free\"]"
 EM_FLAGS += -DKISS_FFT -I$(SONIC_DIR_WASM) -I$(KISS_DIR_WASM) -fPIC
 EM_FLAGS += -DNDEBUG -DCHECK\(x\)=\(\(void\)0\) -DCHECK_EQ\(a,b\)=\(\(void\)0\) -DCHECK_NE\(a,b\)=\(\(void\)0\) -DLOG\(x\)=std::cerr
+EM_FLAGS += -sASSERTIONS#debug flag for now
 
 # List of source files needed for the core library
 SPEEDY_CORE_SOURCES = speedy.c dynamic_time_warping.cc wasm_exports.c
