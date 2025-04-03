@@ -526,6 +526,50 @@ int sonicReadFloatFromStream(sonicStream mySonicStream, float* outBuffer,
   return sonicIntReadFloatFromStream(mySonicStream, outBuffer, bufferSize);
 }
 
+/* Returns the number of samples currently available for reading from the stream.
+ * Note: This queries the *internal* sonic buffer, which might be an 
+ * implementation detail.
+ */
+int sonicSamplesAvailable(sonicStream stream) {
+    /* Internal sonic structure - must match sonic.c definition */
+    struct sonicIntStreamStruct {
+        short *inputBuffer;
+        short *outputBuffer;
+        short *pitchBuffer;
+        short *downSampleBuffer;
+        float speed;
+        float volume;
+        float pitch;
+        float rate;
+        int oldRatePosition;
+        int newRatePosition;
+        int useChordPitch;
+        int quality;
+        int numChannels;
+        int inputBufferSize;
+        int pitchBufferSize;
+        int outputBufferSize;
+        int numInputSamples;
+        int numOutputSamples; /* This is what we need! */
+        int numPitchSamples;
+        int minPeriod;
+        int maxPeriod;
+        int maxRequired;
+        int remainingInputToCopy;
+        int sampleRate;
+        int prevPeriod;
+        int prevMinDiff;
+        void *userData; /* We added this */
+    };
+    typedef struct sonicIntStreamStruct *sonicIntStream;
+
+    if (!stream) {
+        return 0;
+    }
+    sonicIntStream internalStream = (sonicIntStream)stream;
+    return internalStream->numOutputSamples;
+}
+
 int sonicFlushStream(sonicStream mySonicStream){
   assert(mySonicStream);
   speedyConnection mySpeedyConnector =
