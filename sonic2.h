@@ -66,6 +66,8 @@ int sonicWriteFloatToStream(sonicStream mySonicStream, const float* inBuffer,
                              int sampleCount);
 int sonicReadFloatFromStream(sonicStream mySonicStream, float* outBuffer,
                               int bufferSize);
+/* Returns the number of samples currently available for reading from the stream */
+int sonicSamplesAvailable(sonicStream stream);
 
 void sonicSetRate(sonicStream mySonicStream, float rate);
 void sonicSetSpeed(sonicStream mySonicStream, float rate);
