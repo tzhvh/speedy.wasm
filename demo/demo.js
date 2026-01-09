@@ -547,6 +547,7 @@ class SpeedyDemo {
             sonic.setSpeed(this.params.speed);
             sonic.enableNonlinearSpeedup(this.params.nonlinear);
             sonic.setDurationFeedbackStrength(this.params.feedback);
+            sonic.setupSpeedCallback();
 
             // Prepare input data (convert to mono if needed)
             const inputData = this.getMonoData(this.originalBuffer);
@@ -576,6 +577,12 @@ class SpeedyDemo {
             let output;
             while ((output = sonic.readFloatFromStream(chunkSize))) {
                 outputChunks.push(output);
+            }
+
+            // Retrieve and set speed profile data
+            const speedProfile = sonic.getSpeedProfile();
+            if (speedProfile) {
+                this.waveformViewer.setSpeedProfile(speedProfile);
             }
 
             const endTime = performance.now();

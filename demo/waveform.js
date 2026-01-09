@@ -45,6 +45,13 @@ export class WaveformViewer {
 
         this.inspectMode = false; // If true, only show active buffer full height
 
+        // Row-based configuration for flexible rendering
+        this.rowConfig = [
+            { id: 'original', type: 'waveform', heightRatio: 0.35, data: null, color: 'origin' },
+            { id: 'processed', type: 'waveform', heightRatio: 0.35, data: null, color: 'proc' },
+            { id: 'speedProfile', type: 'lineChart', heightRatio: 0.30, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
+        ];
+
         this.onSeek = null; // Callback
         this.onZoom = null; // Callback when zoom changes (for UI sync)
         this.onModeChange = null; // Callback when mode changes
@@ -65,10 +72,21 @@ export class WaveformViewer {
             text: style.getPropertyValue('--wave-text').trim() || '#777',
             origin: style.getPropertyValue('--wave-origin').trim() || '#777',
             proc: style.getPropertyValue('--wave-proc').trim() || '#fff',
+            speed: style.getPropertyValue('--wave-speed').trim() || '#8b5cf6',
             playhead: style.getPropertyValue('--wave-playhead').trim() || '#0f0',
             selection: style.getPropertyValue('--wave-selection').trim() || 'rgba(255, 255, 255, 0.1)',
             selectionBorder: style.getPropertyValue('--wave-selection-border').trim() || '#fff'
         };
+    }
+
+    updateRowData(rowId, data) {
+        const row = this.rowConfig.find(r => r.id === rowId);
+        if (row) row.data = data;
+    }
+
+    setSpeedProfile(speedProfileData) {
+        this.updateRowData('speedProfile', speedProfileData);
+        this.draw();
     }
 
     bindEvents() {
@@ -113,6 +131,8 @@ export class WaveformViewer {
     setData(original, processed) {
         this.originalBuffer = original;
         this.processedBuffer = processed;
+        this.updateRowData('original', original);
+        this.updateRowData('processed', processed);
         this.draw();
     }
 
@@ -683,13 +703,20 @@ export class WaveformViewer {
                  return;
              }
         } else {
-             if (this.originalBuffer) {
-                const isActive = this.playbackState.activeBuffer === 'original';
-                this.drawBuffer(this.originalBuffer, this.colors.origin, this.height / 4, 0.8, isActive);
-             }
-             if (this.processedBuffer) {
-                const isActive = this.playbackState.activeBuffer === 'processed';
-                this.drawBuffer(this.processedBuffer, this.colors.proc, this.height * 0.75, 0.8, isActive);
+             // Draw rows using row configuration
+             let currentY = 0;
+             for (const row of this.rowConfig) {
+                 const rowHeight = this.height * row.heightRatio;
+                 const yCenter = currentY + rowHeight / 2;
+
+                 if (row.type === 'waveform' && row.data) {
+                     const isActive = this.playbackState.activeBuffer === row.id;
+                     this.drawBuffer(row.data, this.colors[row.color], yCenter, 0.8, isActive, currentY, rowHeight);
+                 } else if (row.type === 'lineChart' && row.data) {
+                     this.drawSpeedProfile(row, currentY, rowHeight);
+                 }
+
+                 currentY += rowHeight;
              }
         }
 
@@ -781,40 +808,46 @@ export class WaveformViewer {
         }
     }
 
-    drawBuffer(buffer, color, yCenter, heightScale, isActive) {
+    drawBuffer(buffer, color, yCenter, heightScale, isActive, yOffset = 0, rowHeight = this.height) {
         const ctx = this.ctx;
         const data = buffer.getChannelData(0);
         const duration = buffer.duration;
         const amp = (this.height * (this.inspectMode ? 1.0 : 0.5)) / 2 * heightScale;
-        
+
         if (this.inspectMode) {
              yCenter = this.height / 2;
         }
 
+        // Clip to row bounds
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, yOffset, this.width, rowHeight);
+        ctx.clip();
+
         ctx.beginPath();
         // Sharper, thinner lines
         ctx.strokeStyle = isActive ? color : this.adjustColorOpacity(color, 0.3);
-        ctx.lineWidth = 1; 
-        
+        ctx.lineWidth = 1;
+
         const startPixel = 0;
         const endPixel = this.width;
-        
+
         for (let x = startPixel; x < endPixel; x++) {
             const tStart = this.xToTime(x);
             const tEnd = this.xToTime(x + 1);
-            
+
             let idxStart = Math.floor(tStart * buffer.sampleRate);
             let idxEnd = Math.ceil(tEnd * buffer.sampleRate);
-            
+
             if (idxStart < 0) idxStart = 0;
             if (idxEnd > data.length) idxEnd = data.length;
             if (idxStart >= idxEnd) continue;
 
             let min = 1.0;
             let max = -1.0;
-            
-            const step = Math.ceil((idxEnd - idxStart) / 50); 
-            
+
+            const step = Math.ceil((idxEnd - idxStart) / 50);
+
             let hasData = false;
             for (let i = idxStart; i < idxEnd; i += Math.max(1, step)) {
                 const val = data[i];
@@ -824,7 +857,7 @@ export class WaveformViewer {
             }
 
             if (hasData) {
-                if (min === 1.0 && max === -1.0) { 
+                if (min === 1.0 && max === -1.0) {
                      min = 0; max = 0;
                 }
                 // Crisp rendering
@@ -834,8 +867,87 @@ export class WaveformViewer {
             }
         }
         ctx.stroke();
+        ctx.restore();
     }
-    
+
+    drawSpeedProfile(row, yOffset, rowHeight) {
+        const data = row.data; // Float32Array: [time, speed, time, speed, ...]
+        if (!data || data.length < 4) return;
+
+        const ctx = this.ctx;
+        const padding = 4;
+        const drawHeight = rowHeight - padding * 2;
+        const drawYTop = yOffset + padding;
+        const speedRange = row.maxSpeed - row.minSpeed;
+
+        // Calculate time scaling based on active buffer
+        // Speed profile times are relative to original audio timeline
+        // When processed buffer is active, scale to fit its duration
+        const activeBuffer = this.playbackState.activeBuffer === 'processed' && this.processedBuffer
+            ? this.processedBuffer
+            : this.originalBuffer;
+        const activeDuration = activeBuffer ? activeBuffer.duration : this.getMaxDuration();
+
+        // Get speed profile max time (last frame index / 100)
+        const speedProfileMaxTime = data[data.length - 2] / 100.0;
+        const timeScale = activeDuration / (speedProfileMaxTime || 1);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, yOffset, this.width, rowHeight);
+        ctx.clip();
+
+        // Build path
+        ctx.beginPath();
+        let firstPoint = true;
+        for (let i = 0; i < data.length; i += 2) {
+            const frameIndex = data[i];
+            const speed = data[i + 1];
+            const timeSeconds = frameIndex / 100.0; // 100Hz
+            // Scale time to match active buffer duration
+            const scaledTime = timeSeconds * timeScale;
+            const x = this.timeToX(scaledTime);
+
+            if (x < -10 || x > this.width + 10) continue;
+
+            const normalizedSpeed = (speed - row.minSpeed) / speedRange;
+            const y = drawYTop + drawHeight * (1 - normalizedSpeed);
+
+            if (firstPoint) { ctx.moveTo(x, y); firstPoint = false; }
+            else { ctx.lineTo(x, y); }
+        }
+
+        // Draw line with gradient fill
+        ctx.strokeStyle = this.colors[row.color];
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Gradient fill below line
+        const gradient = ctx.createLinearGradient(0, drawYTop, 0, drawYTop + drawHeight);
+        gradient.addColorStop(0, this.colors[row.color] + '40');
+        gradient.addColorStop(1, this.colors[row.color] + '00');
+        ctx.lineTo(this.width, drawYTop + drawHeight);
+        ctx.lineTo(0, drawYTop + drawHeight);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Speed threshold lines (1x, 2x)
+        ctx.strokeStyle = this.colors.grid;
+        ctx.lineWidth = 1;
+        [1.0, 2.0].forEach(threshold => {
+            if (threshold >= row.minSpeed && threshold <= row.maxSpeed) {
+                const y = drawYTop + drawHeight * (1 - (threshold - row.minSpeed) / speedRange);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(this.width, y);
+                ctx.stroke();
+            }
+        });
+
+        ctx.restore();
+    }
+
     adjustColorOpacity(hex, opacity) {
         // Simple hex to rgba
         let c = hex.substring(1).split('');
