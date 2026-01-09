@@ -29,6 +29,20 @@ export class WaveformViewer {
         this.selection = null; // { start: time, end: time }
         this.hoverTime = null;
 
+        // Pointer/Touch State (for unified mouse/touch/pen handling)
+        this.activePointers = new Map(); // pointerId -> {x, y, startTime, startX, startY}
+        this.capturedPointerId = null; // Currently captured pointer for drag operations
+        this.isPinching = false; // Two-finger pinch active
+        this.lastPinchDistance = 0; // For calculating zoom
+        this.lastPinchCenter = { x: 0, y: 0 }; // For pinch-zoom center
+        this.minDragDistance = 10; // Pixels to move before starting selection (larger for touch)
+        this.playheadHitArea = 20; // Hit area for playhead (larger for touch)
+
+        // Double-tap detection
+        this.lastTap = { time: 0, x: 0, y: 0 };
+        this.doubleTapTimeout = 300; // ms
+        this.doubleTapDistance = 50; // pixels
+
         this.inspectMode = false; // If true, only show active buffer full height
 
         this.onSeek = null; // Callback
@@ -62,7 +76,14 @@ export class WaveformViewer {
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.canvas);
 
-        // Mouse/Touch interaction
+        // Pointer Events (unified mouse/touch/pen handling)
+        this.canvas.addEventListener('pointerdown', this.handlePointerDown.bind(this));
+        window.addEventListener('pointermove', this.handlePointerMove.bind(this));
+        window.addEventListener('pointerup', this.handlePointerUp.bind(this));
+        this.canvas.addEventListener('pointercancel', this.handlePointerCancel.bind(this));
+        this.canvas.addEventListener('pointerout', this.handlePointerOut.bind(this));
+
+        // Mouse events (kept for fallback compatibility)
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         window.addEventListener('mousemove', this.handleMouseMove.bind(this));
         window.addEventListener('mouseup', this.handleMouseUp.bind(this));
@@ -318,17 +339,17 @@ export class WaveformViewer {
     handleWheel(e) {
         e.preventDefault();
         // If ctrl pressed, zoom. Else scroll (if in realtime mode)
-        
+
         if (e.ctrlKey || e.metaKey) {
             // Zoom
             const delta = -Math.sign(e.deltaY) * 0.1;
             const newZoom = Math.max(0.1, Math.min(100, this.zoomLevel + delta));
-            
+
             // Zoom towards mouse pointer
             const rect = this.canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const timeAtMouse = this.xToTime(mouseX);
-            
+
             this.setZoom(newZoom);
             if (this.onZoom) this.onZoom(newZoom);
 
@@ -349,6 +370,264 @@ export class WaveformViewer {
                 this.draw();
             }
         }
+    }
+
+    // ========== POINTER EVENT HANDLERS (Unified Mouse/Touch/Pen) ==========
+
+    handlePointerDown(e) {
+        e.preventDefault();
+
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Store pointer info
+        this.activePointers.set(e.pointerId, {
+            x, y,
+            startX: x,
+            startY: y,
+            startTime: performance.now(),
+            isTap: true
+        });
+
+        // Check for multi-touch gestures
+        if (this.activePointers.size >= 2) {
+            // Two or more pointers - potential pinch/pan gesture
+            this.updatePinchState();
+            return;
+        }
+
+        // Single pointer - check for playhead hit or selection start
+        const playheadX = this.timeToX(this.playbackState.currentTime);
+
+        if (Math.abs(x - playheadX) < this.playheadHitArea) {
+            // Hit playhead - prepare for drag
+            this.isDraggingPlayhead = true;
+            this.isDragging = false;
+            this.capturedPointerId = e.pointerId;
+            this.canvas.setPointerCapture(e.pointerId);
+        } else {
+            // Click on empty space - prepare for potential selection drag
+            this.isDragging = true;
+            this.isDraggingPlayhead = false;
+            this.dragStartX = x;
+            this.capturedPointerId = e.pointerId;
+            this.canvas.setPointerCapture(e.pointerId);
+
+            // Clear existing selection when starting new drag
+            if (this.selection) {
+                this.selection = null;
+                if (this.onSelectionChange) {
+                    this.onSelectionChange(null);
+                }
+                this.draw();
+            }
+        }
+    }
+
+    handlePointerMove(e) {
+        // Only process if this is our captured pointer
+        if (this.capturedPointerId !== null && e.pointerId !== this.capturedPointerId) {
+            return;
+        }
+
+        // Update pointer position
+        if (this.activePointers.has(e.pointerId)) {
+            const rect = this.canvas.getBoundingClientRect();
+            const ptr = this.activePointers.get(e.pointerId);
+            ptr.x = e.clientX - rect.left;
+            ptr.y = e.clientY - rect.top;
+
+            // Mark as not a tap if moved significantly
+            const dx = ptr.x - ptr.startX;
+            const dy = ptr.y - ptr.startY;
+            if (Math.sqrt(dx * dx + dy * dy) > 10) {
+                ptr.isTap = false;
+            }
+        }
+
+        // Handle pinch/pan gestures
+        if (this.activePointers.size >= 2) {
+            e.preventDefault();
+            this.updatePinchState();
+            return;
+        }
+
+        // Single pointer drag
+        if (this.capturedPointerId === e.pointerId) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+
+            if (this.isDraggingPlayhead) {
+                // Dragging playhead
+                const t = this.xToTime(x);
+                const maxDur = this.getMaxDuration();
+
+                // Clamp to selection bounds if active
+                if (this.selection) {
+                    this.playbackState.currentTime = Math.max(this.selection.start, Math.min(t, this.selection.end));
+                } else {
+                    this.playbackState.currentTime = Math.max(0, Math.min(t, maxDur));
+                }
+                this.draw();
+
+            } else if (this.isDragging) {
+                // Creating selection
+                if (Math.abs(x - this.dragStartX) > this.minDragDistance) {
+                    const t1 = this.xToTime(this.dragStartX);
+                    const t2 = this.xToTime(x);
+                    this.selection = {
+                        start: Math.min(t1, t2),
+                        end: Math.max(t1, t2)
+                    };
+                    this.draw();
+                }
+            }
+        }
+    }
+
+    handlePointerUp(e) {
+        // Remove from active pointers
+        const ptr = this.activePointers.get(e.pointerId);
+        if (ptr) {
+            this.activePointers.delete(e.pointerId);
+        }
+
+        // Release capture if this was our pointer
+        if (this.capturedPointerId === e.pointerId) {
+            this.canvas.releasePointerCapture(e.pointerId);
+            this.capturedPointerId = null;
+
+            if (this.isDraggingPlayhead) {
+                // Finalize playhead drag
+                this.isDraggingPlayhead = false;
+                if (this.onSeek) {
+                    this.onSeek(this.playbackState.currentTime);
+                }
+
+            } else if (this.isDragging) {
+                // Finalize selection or handle tap
+                this.isDragging = false;
+
+                if (this.selection) {
+                    // Selection created
+                    if (this.onSelectionChange) {
+                        this.onSelectionChange({...this.selection});
+                    }
+                } else if (ptr && ptr.isTap) {
+                    // Check for double-tap
+                    const now = performance.now();
+                    const timeSinceLastTap = now - this.lastTap.time;
+                    const dx = ptr.startX - this.lastTap.x;
+                    const dy = ptr.startY - this.lastTap.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (timeSinceLastTap < this.doubleTapTimeout && dist < this.doubleTapDistance) {
+                        // Double-tap detected!
+                        this.handleDoubleTap(ptr.startX, ptr.startY);
+                        this.lastTap = { time: 0, x: 0, y: 0 }; // Reset
+                    } else {
+                        // Single tap = seek
+                        this.lastTap = { time: now, x: ptr.startX, y: ptr.startY };
+                        const time = this.xToTime(ptr.startX);
+                        if (this.onSeek) this.onSeek(time);
+                    }
+                }
+            }
+        }
+
+        // Exit pinch mode if < 2 pointers remaining
+        if (this.activePointers.size < 2) {
+            this.isPinching = false;
+        }
+    }
+
+    handlePointerCancel(e) {
+        // Treat like pointerup
+        this.handlePointerUp(e);
+    }
+
+    handlePointerOut(e) {
+        // Only relevant if pointer wasn't captured
+        if (this.capturedPointerId === null && this.activePointers.has(e.pointerId)) {
+            this.activePointers.delete(e.pointerId);
+        }
+    }
+
+    // ========== GESTURE HANDLING ==========
+
+    updatePinchState() {
+        const pointers = Array.from(this.activePointers.values());
+        if (pointers.length < 2) return;
+
+        const p1 = pointers[0];
+        const p2 = pointers[1];
+
+        // Calculate distance between pointers
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate center point
+        const centerX = (p1.x + p2.x) / 2;
+        const centerY = (p1.y + p2.y) / 2;
+
+        if (this.isPinching && this.lastPinchDistance > 0) {
+            // Calculate zoom from pinch
+            const scale = distance / this.lastPinchDistance;
+
+            // Apply zoom if change is significant
+            if (Math.abs(scale - 1) > 0.01) {
+                const rect = this.canvas.getBoundingClientRect();
+                const timeAtCenter = this.xToTime(centerX);
+
+                // Calculate new zoom level
+                const newZoom = Math.max(0.1, Math.min(100, this.zoomLevel * scale));
+
+                this.setZoom(newZoom);
+                if (this.onZoom) this.onZoom(newZoom);
+
+                // Adjust scroll to keep center point stable
+                if (this.scaleMode === 'realtime') {
+                    const newX = timeAtCenter * this.pixelsPerSecond;
+                    this.scrollX = newX - centerX;
+                }
+
+                this.lastPinchDistance = distance;
+                this.draw();
+            }
+        } else {
+            // Initialize pinch state
+            this.isPinching = true;
+            this.lastPinchDistance = distance;
+        }
+
+        // Handle two-finger pan (horizontal movement of center point)
+        if (this.lastPinchCenter.x !== 0) {
+            const deltaX = centerX - this.lastPinchCenter.x;
+
+            if (this.scaleMode === 'realtime' && Math.abs(deltaX) > 2) {
+                this.scrollX += deltaX;
+                this.draw();
+            }
+        }
+
+        this.lastPinchCenter = { x: centerX, y: centerY };
+    }
+
+    handleDoubleTap(x, y) {
+        // Double-tap action: toggle inspect mode
+        this.inspectMode = !this.inspectMode;
+
+        // If inspect mode is enabled, also clear any selection
+        if (this.inspectMode && this.selection) {
+            this.selection = null;
+            if (this.onSelectionChange) {
+                this.onSelectionChange(null);
+            }
+        }
+
+        this.draw();
     }
     
     zoomToSelection() {
