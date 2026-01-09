@@ -61,6 +61,19 @@ export class WaveformViewer {
             isBuilt: false
         };
 
+        // Speed profile animation state
+        this.speedProfileAnimation = {
+            isAnimating: false,
+            startTime: 0,
+            duration: 600,
+            startScale: 1.0,
+            targetScale: 1.0,
+            currentScale: 1.0,
+            animationId: null,
+            startBuffer: null,
+            targetBuffer: null
+        };
+
         this.onSeek = null; // Callback
         this.onZoom = null; // Callback when zoom changes (for UI sync)
         this.onModeChange = null; // Callback when mode changes
@@ -87,6 +100,14 @@ export class WaveformViewer {
             selection: style.getPropertyValue('--wave-selection').trim() || 'rgba(255, 255, 255, 0.1)',
             selectionBorder: style.getPropertyValue('--wave-selection-border').trim() || '#fff'
         };
+    }
+
+    easeInOutCubic(t) {
+        // t: normalized progress [0, 1]
+        // Returns: eased progress [0, 1]
+        return t < 0.5
+            ? 4 * t * t * t
+            : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     updateRowData(rowId, data) {
@@ -142,6 +163,81 @@ export class WaveformViewer {
         }
 
         this.positionMap.isBuilt = true;
+    }
+
+    calculateTimeScaleForBuffer(bufferType) {
+        const speedProfileRow = this.rowConfig.find(r => r.id === 'speedProfile');
+        if (!speedProfileRow || !speedProfileRow.data) return 1.0;
+
+        const data = speedProfileRow.data;
+        const speedProfileMaxTime = data[data.length - 2] / 100.0;
+
+        const buffer = bufferType === 'processed'
+            ? this.processedBuffer
+            : this.originalBuffer;
+        const duration = buffer ? buffer.duration : this.getMaxDuration();
+
+        return duration / (speedProfileMaxTime || 1);
+    }
+
+    startSpeedProfileAnimation(targetBuffer) {
+        const animation = this.speedProfileAnimation;
+
+        // Cancel existing animation if running
+        if (animation.animationId !== null) {
+            cancelAnimationFrame(animation.animationId);
+            animation.animationId = null;
+        }
+
+        // Get speed profile data
+        const speedProfileRow = this.rowConfig.find(r => r.id === 'speedProfile');
+        if (!speedProfileRow || !speedProfileRow.data) return;
+
+        const data = speedProfileRow.data;
+        const speedProfileMaxTime = data[data.length - 2] / 100.0;
+
+        // Calculate target timeScale based on target buffer
+        const targetBufferObj = targetBuffer === 'processed'
+            ? this.processedBuffer
+            : this.originalBuffer;
+        const targetDuration = targetBufferObj ? targetBufferObj.duration : this.getMaxDuration();
+        const targetScale = targetDuration / (speedProfileMaxTime || 1);
+
+        // Set start state
+        animation.startScale = animation.isAnimating
+            ? animation.currentScale
+            : this.calculateTimeScaleForBuffer(animation.targetBuffer || this.playbackState.activeBuffer);
+        animation.targetScale = targetScale;
+        animation.startBuffer = this.playbackState.activeBuffer;
+        animation.targetBuffer = targetBuffer;
+        animation.startTime = performance.now();
+        animation.isAnimating = true;
+
+        // Start animation loop
+        const animate = (currentTime) => {
+            const elapsed = currentTime - animation.startTime;
+            const progress = Math.min(elapsed / animation.duration, 1.0);
+
+            // Apply easing
+            const easedProgress = this.easeInOutCubic(progress);
+
+            // Interpolate timeScale
+            animation.currentScale = animation.startScale +
+                (animation.targetScale - animation.startScale) * easedProgress;
+
+            // Trigger redraw
+            this.draw();
+
+            // Continue or complete animation
+            if (progress < 1.0) {
+                animation.animationId = requestAnimationFrame(animate);
+            } else {
+                animation.isAnimating = false;
+                animation.animationId = null;
+            }
+        };
+
+        animation.animationId = requestAnimationFrame(animate);
     }
 
     binarySearchOriginal(processedTimes, targetProcessedTime, speedProfile) {
@@ -263,6 +359,13 @@ export class WaveformViewer {
     }
 
     setData(original, processed) {
+        // Cancel any ongoing animation since buffers changed
+        if (this.speedProfileAnimation.animationId !== null) {
+            cancelAnimationFrame(this.speedProfileAnimation.animationId);
+            this.speedProfileAnimation.animationId = null;
+            this.speedProfileAnimation.isAnimating = false;
+        }
+
         this.originalBuffer = original;
         this.processedBuffer = processed;
         this.updateRowData('original', original);
@@ -271,13 +374,20 @@ export class WaveformViewer {
     }
 
     setPlaybackState(isPlaying, currentTime, activeBuffer) {
+        const previousBuffer = this.playbackState.activeBuffer;
+
         this.playbackState.isPlaying = isPlaying;
         // If dragging playhead, don't update from playback loop to avoid fighting
         if (!this.isDraggingPlayhead) {
              this.playbackState.currentTime = currentTime;
         }
         this.playbackState.activeBuffer = activeBuffer;
-        
+
+        // Trigger speed profile animation if buffer changed
+        if (previousBuffer !== activeBuffer && activeBuffer) {
+            this.startSpeedProfileAnimation(activeBuffer);
+        }
+
         // Auto-scroll / Follow Playback
         if (isPlaying && this.scaleMode === 'realtime' && !this.isDraggingPlayhead) {
             const currentX = this.timeToX(currentTime);
@@ -301,8 +411,11 @@ export class WaveformViewer {
                 this.scrollX = targetScrollX;
             }
         }
-        
-        this.draw();
+
+        // Only draw if not animating (animation loop handles drawing)
+        if (!this.speedProfileAnimation.isAnimating) {
+            this.draw();
+        }
     }
 
     setScaleMode(mode) {
@@ -1071,14 +1184,21 @@ export class WaveformViewer {
         // Calculate time scaling based on active buffer
         // Speed profile times are relative to original audio timeline
         // When processed buffer is active, scale to fit its duration
-        const activeBuffer = this.playbackState.activeBuffer === 'processed' && this.processedBuffer
-            ? this.processedBuffer
-            : this.originalBuffer;
-        const activeDuration = activeBuffer ? activeBuffer.duration : this.getMaxDuration();
 
-        // Get speed profile max time (last frame index / 100)
-        const speedProfileMaxTime = data[data.length - 2] / 100.0;
-        const timeScale = activeDuration / (speedProfileMaxTime || 1);
+        // Use animated scale if animating, otherwise calculate directly
+        let timeScale;
+        if (this.speedProfileAnimation.isAnimating) {
+            timeScale = this.speedProfileAnimation.currentScale;
+        } else {
+            const activeBuffer = this.playbackState.activeBuffer === 'processed' && this.processedBuffer
+                ? this.processedBuffer
+                : this.originalBuffer;
+            const activeDuration = activeBuffer ? activeBuffer.duration : this.getMaxDuration();
+
+            // Get speed profile max time (last frame index / 100)
+            const speedProfileMaxTime = data[data.length - 2] / 100.0;
+            timeScale = activeDuration / (speedProfileMaxTime || 1);
+        }
 
         ctx.save();
         ctx.beginPath();
