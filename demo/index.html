@@ -267,6 +267,24 @@
             box-shadow: inset 0 0 0 2px var(--text-main);
         }
 
+        .btn.ready {
+            box-shadow: 0 2px 0 0px var(--wave-playhead),
+                inset 0 2px 0 0px var(--wave-playhead);
+            /* animation: pulse-ready 2s ease-in-out infinite; */
+        }
+
+        @keyframes pulse-ready {
+
+            0%,
+            100% {
+                box-shadow: 0 20px 0 0 var(--wave-playhead), inset 0 20px 0 0 var(--wave-playhead);
+            }
+
+            50% {
+                box-shadow: 0 20px 0 0 var(--wave-playhead), inset 0 20px 0 0 var(--wave-playhead);
+            }
+        }
+
         .info-box {
             background-color: var(--info-box-bg);
             border-top: 1px solid var(--border-color);
@@ -580,26 +598,38 @@
                 <div id="statsContainer" class="stats-grid" style="display:none;">
                     <div class="stats-section">
                         <div class="stats-section-header">Input Signal</div>
-                        <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span>
+                        </div>
                     </div>
 
                     <div class="stats-section">
                         <div class="stats-section-header">Performance</div>
-                        <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear"
+                                class="stats-val">-</span></div>
                     </div>
 
                     <div class="stats-section">
                         <div class="stats-section-header">Output Signal</div>
-                        <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Compression</span> <span id="compressionRatio" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Compression</span> <span id="compressionRatio"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span>
+                        </div>
                     </div>
 
                     <div class="stats-section">
@@ -608,7 +638,8 @@
                         <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
                         <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
                         <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -734,7 +765,8 @@
                 </div>
 
                 <button id="clearSelectionBtn" class="btn btn-secondary"
-                    style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;" disabled>
+                    style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;"
+                    disabled>
                     CLEAR SEL
                 </button>
 

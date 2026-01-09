@@ -44,6 +44,9 @@ class SpeedyDemo {
             feedback: 0.1
         };
 
+        // Track last processed parameters for staleness detection
+        this.lastProcessedParams = null;
+
         this.selectedBufferType = 'original'; // 'original' or 'processed'
 
         this.stats = {
@@ -54,6 +57,9 @@ class SpeedyDemo {
 
         this.bindEvents();
         this.bindWaveformEvents();
+
+        // Initialize processBtn state
+        this.updateProcessBtnState();
     }
 
     bindEvents() {
@@ -64,6 +70,8 @@ class SpeedyDemo {
             el.addEventListener('input', (e) => {
                 this.params[id] = parseFloat(e.target.value);
                 valEl.textContent = this.params[id] + (id === 'speed' ? 'x' : '');
+                // Update processBtn ready state when params change
+                this.updateProcessBtnState();
             });
         });
 
@@ -269,6 +277,27 @@ class SpeedyDemo {
         playPauseBtn.classList.toggle('active', isPlaying);
     }
 
+    checkProcessStaleness() {
+        // Stale if no processed buffer exists yet
+        if (!this.processedBuffer) {
+            return true;
+        }
+        // Stale if params have changed since last processing
+        if (!this.lastProcessedParams) {
+            return true;
+        }
+        // Compare each parameter
+        return this.params.speed !== this.lastProcessedParams.speed ||
+               this.params.nonlinear !== this.lastProcessedParams.nonlinear ||
+               this.params.feedback !== this.lastProcessedParams.feedback;
+    }
+
+    updateProcessBtnState() {
+        const isStale = this.checkProcessStaleness();
+        const isEnabled = !this.processBtn.disabled;
+        this.processBtn.classList.toggle('ready', isStale && isEnabled);
+    }
+
     updateSelectionUI() {
         const indicator = document.getElementById('selectionIndicator');
         const clearBtn = document.getElementById('clearSelectionBtn');
@@ -444,6 +473,8 @@ class SpeedyDemo {
 
             // Only enable process button if module is loaded
             this.processBtn.disabled = !this.moduleLoaded;
+            // Show ready state when audio is loaded but not processed
+            this.updateProcessBtnState();
             this.waveformViewer.setData(audioBuffer, null);
             this.updateButtonStates();
             this.updateInputStats();
@@ -576,6 +607,10 @@ class SpeedyDemo {
             this.isProcessing = false;
             this.indicator.style.display = 'none';
             this.processBtn.disabled = false;
+            // Store params that were used for this processing
+            this.lastProcessedParams = { ...this.params };
+            // Clear ready state since we just processed
+            this.updateProcessBtnState();
         }
     }
 
