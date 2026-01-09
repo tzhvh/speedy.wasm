@@ -90,6 +90,22 @@ class StreamingDemo {
                         type: 'setSpeed', 
                         payload: parseFloat(this.speedSlider.value) 
                     });
+                    
+                    // Enable nonlinear for demo
+                    this.workletNode.port.postMessage({ type: 'setNonlinear', payload: 1.0 });
+                } else if (e.data.type === 'speedProfile') {
+                     const profile = e.data.payload;
+                     // Profile is [time1, speed1, time2, speed2...]
+                     // Just show the last one for now to prove it works
+                     if (profile.length >= 2) {
+                         const lastSpeed = profile[profile.length - 1];
+                         const lastTime = profile[profile.length - 2]; // Frame index
+                         // Update a debug element (if exists) or just log occasionally
+                         if (Math.random() < 0.05) { // Throttle logs
+                             // this.log(`Speedy Sync: Frame ${lastTime} -> Speed ${lastSpeed.toFixed(3)}x`);
+                         }
+                         document.getElementById('realtimeSpeed').textContent = lastSpeed.toFixed(3) + 'x';
+                     }
                 }
             };
             

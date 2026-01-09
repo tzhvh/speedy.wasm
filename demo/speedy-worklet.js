@@ -76,6 +76,11 @@ class SpeedyProcessor extends AudioWorkletProcessor {
         // Sample rate is fixed in AudioWorklet (usually 44100 or 48000)
         this.sonic = new this.SonicStream(sampleRate, this.channels);
         
+        // Enable nonlinear speedup features by default (can be controlled via params)
+        // If the user wants linear speedup, they can set nonlinear factor to 0.
+        // We need to enable callbacks to get speed profile.
+        this.sonic.setupSpeedCallback();
+
         this.ready = true;
         this.port.postMessage({ type: 'ready' });
     } catch (e) {
@@ -94,6 +99,9 @@ class SpeedyProcessor extends AudioWorkletProcessor {
             break;
         case 'setPitch':
             this.sonic.setRate(payload);
+            break;
+        case 'setNonlinear':
+            this.sonic.enableNonlinearSpeedup(payload);
             break;
     }
   }
@@ -171,6 +179,17 @@ class SpeedyProcessor extends AudioWorkletProcessor {
         // If we didn't get enough samples, pad with silence?
         // Or just let it be (it will be 0 from previous buffer or empty). 
         // AudioWorklet buffers are zero-initialized by host? usually.
+    }
+    
+    // 3. Sync: Get speed profile
+    // Only fetch if we processed something to avoid empty messages spam
+    if (toRead > 0) {
+        const profile = this.sonic.getSpeedProfile();
+        if (profile) {
+            // Transfer the Float32Array to avoid copy
+            // profile is a Float32Array
+            this.port.postMessage({ type: 'speedProfile', payload: profile }, [profile.buffer]);
+        }
     }
     
     return true;

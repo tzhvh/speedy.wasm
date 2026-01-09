@@ -26,12 +26,20 @@
 #include <vector>
 #include <memory>
 #include <stdexcept>
+#include <map>
+#include <mutex>
 
 // Forward declarations for C APIs
 extern "C" {
     #include "speedy.h"
     #include "sonic2.h"
 }
+
+struct SonicStreamWrapper;
+
+// Static map to route callbacks
+static std::map<sonicStream, SonicStreamWrapper*> streamMap;
+static std::mutex streamMapMutex;
 
 // ============================================================================
 // Memory Management Helpers
@@ -258,6 +266,9 @@ struct SonicStreamWrapper {
     sonicStream stream;
     int numChannels;
     int sampleRate;
+    
+    // Buffer for speed profile
+    std::vector<float> speedProfile;
 
     /**
      * Create a new Sonic stream.
@@ -271,6 +282,9 @@ struct SonicStreamWrapper {
         if (!stream) {
             throw std::runtime_error("Failed to create Sonic stream: out of memory");
         }
+        
+        std::lock_guard<std::mutex> lock(streamMapMutex);
+        streamMap[stream] = this;
     }
 
     /**
@@ -278,6 +292,9 @@ struct SonicStreamWrapper {
      */
     ~SonicStreamWrapper() {
         if (stream) {
+            std::lock_guard<std::mutex> lock(streamMapMutex);
+            streamMap.erase(stream);
+            
             sonicDestroyStream(stream);
             stream = nullptr;
         }
@@ -432,6 +449,40 @@ struct SonicStreamWrapper {
     int samplesAvailable() {
         return sonicSamplesAvailable(stream);
     }
+    
+    // --- Speed Profile Callback Support ---
+
+    static void speedCallbackStatic(sonicStream stream, int time, float speed) {
+        std::lock_guard<std::mutex> lock(streamMapMutex);
+        auto it = streamMap.find(stream);
+        if (it != streamMap.end()) {
+            it->second->recordSpeed(time, speed);
+        }
+    }
+
+    void recordSpeed(int time, float speed) {
+        // time is frame index. We return (time, speed) pairs flat.
+        speedProfile.push_back(static_cast<float>(time));
+        speedProfile.push_back(speed);
+    }
+    
+    void setupSpeedCallback() {
+        sonicSpeedCallback(stream, speedCallbackStatic);
+    }
+    
+    /**
+     * Get the accumulated speed profile and clear the buffer.
+     * Returns a Float32Array where [i] = time (frame index), [i+1] = speed.
+     */
+    emscripten::val getSpeedProfile() {
+        if (speedProfile.empty()) {
+            return emscripten::val::undefined();
+        }
+        
+        emscripten::val result = floatVectorToJsArray(speedProfile);
+        speedProfile.clear();
+        return result;
+    }
 
     // Prevent copying
     SonicStreamWrapper(const SonicStreamWrapper&) = delete;
@@ -494,6 +545,8 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
         .function("enableNonlinearSpeedup", &SonicStreamWrapper::enableNonlinearSpeedup)
         .function("setDurationFeedbackStrength", &SonicStreamWrapper::setDurationFeedbackStrength)
         .function("samplesAvailable", &SonicStreamWrapper::samplesAvailable)
+        .function("setupSpeedCallback", &SonicStreamWrapper::setupSpeedCallback)
+        .function("getSpeedProfile", &SonicStreamWrapper::getSpeedProfile)
         ;
 
     // Register std::vector types for return values
