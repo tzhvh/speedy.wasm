@@ -1,0 +1,5 @@
+*.md
+
+# Compiled WASM outputs
+dist/
+build/

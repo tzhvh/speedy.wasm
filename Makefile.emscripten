@@ -1,0 +1,114 @@
+# Emscripten Makefile for Speedy WebAssembly bindings
+# Compiles Speedy, Sonic, and KissFFT into a single WASM module with embind
+
+# === Toolchain ===
+EMCC = emcc
+EMPP = em++
+
+# === Directories ===
+BUILD_DIR = build
+DIST_DIR = dist
+SONIC_DIR = deps/sonic
+KISS_DIR = deps/kissfft
+DOCS_DIR = docs
+
+# === Source Files ===
+# Note: dynamic_time_warping.cc is excluded as it requires glog and is only used for tests
+SPEEDY_SOURCES = speedy.c soniclib.c
+SONIC_SOURCES = $(SONIC_DIR)/sonic.c
+KISSFFT_SOURCES = $(KISS_DIR)/kiss_fft.c $(KISS_DIR)/kiss_fftr.c
+ALL_SOURCES = bindings.cpp $(SPEEDY_SOURCES) $(SONIC_SOURCES) $(KISSFFT_SOURCES)
+
+# === Common Compiler Flags ===
+CFLAGS_COMMON = \
+	-O3 \
+	-s WASM=1 \
+	-s ALLOW_MEMORY_GROWTH=1 \
+	-s ASSERTIONS=1 \
+	-s DISABLE_EXCEPTION_CATCHING=0 \
+	-s EXCEPTION_CATCHING_ALLOWED='[std::invalid_argument,std::runtime_error]' \
+	-I$(SONIC_DIR) \
+	-I$(KISS_DIR) \
+	-DKISS_FFT \
+	-DSONIC_INTERNAL \
+	-std=c++17 \
+	--bind \
+	-s NO_EXIT_RUNTIME=1 \
+	-s EXPORTED_RUNTIME_METHODS='["cwrap","HEAPF32","HEAP16"]'
+
+# === ES6 Module Flags ===
+CFLAGS_ES6 = $(CFLAGS_COMMON) \
+	-s MODULARIZE=1 \
+	-s EXPORT_ES6=1 \
+	-s ENVIRONMENT=web,worker
+
+# === UMD Module Flags ===
+CFLAGS_UMD = $(CFLAGS_COMMON) \
+	-s MODULARIZE=1 \
+	-s EXPORT_NAME="'SpeedyWasm'" \
+	-s EXPORT_ES6=0 \
+	-s ENVIRONMENT=web,worker,node
+
+# === Targets ===
+.PHONY: all clean es6 umd deps prepare
+
+all: es6 umd
+
+# Create dist directory
+prepare:
+	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(DIST_DIR)
+	@mkdir -p $(DOCS_DIR)
+
+# Build ES6 module
+es6: prepare $(DIST_DIR)/speedy.js
+
+# Build UMD module
+umd: prepare $(DIST_DIR)/speedy.umd.js
+
+# ES6 module output
+$(DIST_DIR)/speedy.js: $(ALL_SOURCES) speedy.h sonic2.h
+	@echo "Building ES6 module..."
+	$(EMPP) $(CFLAGS_ES6) $(ALL_SOURCES) -o $@
+
+# UMD module output
+$(DIST_DIR)/speedy.umd.js: $(ALL_SOURCES) speedy.h sonic2.h
+	@echo "Building UMD module..."
+	$(EMPP) $(CFLAGS_UMD) $(ALL_SOURCES) -o $@
+
+# Initialize submodules (if not already done)
+deps:
+	@if [ ! -d "$(SONIC_DIR)" ]; then \
+		git submodule add https://github.com/waywardgeek/sonic.git $(SONIC_DIR); \
+	fi
+	@if [ ! -d "$(KISS_DIR)" ]; then \
+		git submodule add https://github.com/mborgerding/kissfft.git $(KISS_DIR); \
+	fi
+	git submodule update --init --recursive
+
+# Clean build artifacts
+clean:
+	rm -rf $(BUILD_DIR) $(DIST_DIR)
+	rm -f *.o
+
+# Show build info
+info:
+	@echo "Speedy WebAssembly Build Configuration"
+	@echo "======================================="
+	@echo "Sonic Directory: $(SONIC_DIR)"
+	@echo "KissFFT Directory: $(KISS_DIR)"
+	@echo "Build Directory: $(BUILD_DIR)"
+	@echo "Dist Directory: $(DIST_DIR)"
+	@echo ""
+	@echo "Source Files:"
+	@echo "  Speedy: $(SPEEDY_SOURCES)"
+	@echo "  Sonic: $(SONIC_SOURCES)"
+	@echo "  KissFFT: $(KISSFFT_SOURCES)"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make all       - Build both ES6 and UMD modules"
+	@echo "  make es6       - Build ES6 module only"
+	@echo "  make umd       - Build UMD module only"
+	@echo "  make clean     - Clean build artifacts"
+	@echo "  make deps      - Initialize submodules"
+	@echo "  make info      - Show this information"
