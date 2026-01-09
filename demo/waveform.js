@@ -52,6 +52,15 @@ export class WaveformViewer {
             { id: 'speedProfile', type: 'lineChart', heightRatio: 0.30, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
         ];
 
+        // Position mapping for bifurcated playhead
+        this.positionMap = {
+            originalToProcessed: null,
+            processedToOriginal: null,
+            originalDuration: 0,
+            processedDuration: 0,
+            isBuilt: false
+        };
+
         this.onSeek = null; // Callback
         this.onZoom = null; // Callback when zoom changes (for UI sync)
         this.onModeChange = null; // Callback when mode changes
@@ -73,6 +82,7 @@ export class WaveformViewer {
             origin: style.getPropertyValue('--wave-origin').trim() || '#777',
             proc: style.getPropertyValue('--wave-proc').trim() || '#fff',
             speed: style.getPropertyValue('--wave-speed').trim() || '#8b5cf6',
+            bifurcated: style.getPropertyValue('--wave-bifurcated').trim() || 'rgba(249, 115, 22, 0.5)',
             playhead: style.getPropertyValue('--wave-playhead').trim() || '#0f0',
             selection: style.getPropertyValue('--wave-selection').trim() || 'rgba(255, 255, 255, 0.1)',
             selectionBorder: style.getPropertyValue('--wave-selection-border').trim() || '#fff'
@@ -87,6 +97,130 @@ export class WaveformViewer {
     setSpeedProfile(speedProfileData) {
         this.updateRowData('speedProfile', speedProfileData);
         this.draw();
+    }
+
+    buildPositionMap(originalDuration, processedDuration, speedProfile) {
+        if (!speedProfile || speedProfile.length < 4) {
+            this.positionMap.isBuilt = false;
+            return;
+        }
+
+        const numPoints = speedProfile.length / 2;
+        this.positionMap.originalToProcessed = new Float32Array(numPoints);
+        this.positionMap.processedToOriginal = new Float32Array(numPoints);
+        this.positionMap.originalDuration = originalDuration;
+        this.positionMap.processedDuration = processedDuration;
+
+        // Build forward mapping: original time → processed time
+        let cumulativeProcessedTime = 0;
+
+        for (let i = 0; i < numPoints; i++) {
+            const frameIndex = speedProfile[i * 2];
+            const speed = Math.max(0.01, speedProfile[i * 2 + 1]);
+
+            // Integrate: delta_processed = delta_original / speed
+            if (i > 0) {
+                const prevFrameIndex = speedProfile[(i - 1) * 2];
+                const frameDelta = frameIndex - prevFrameIndex;
+                cumulativeProcessedTime += (frameDelta / 100.0) / speed;
+            }
+
+            this.positionMap.originalToProcessed[i] = cumulativeProcessedTime;
+        }
+
+        // Build reverse mapping: processed time → original time
+        // Create sorted processed time array for binary search
+        const processedTimes = new Float32Array(numPoints);
+        for (let i = 0; i < numPoints; i++) {
+            processedTimes[i] = this.positionMap.originalToProcessed[i];
+        }
+
+        // For each evenly-spaced processed time, find corresponding original time
+        for (let i = 0; i < numPoints; i++) {
+            const targetProcessedTime = (i / (numPoints - 1)) * processedDuration;
+            this.positionMap.processedToOriginal[i] = this.binarySearchOriginal(processedTimes, targetProcessedTime, speedProfile);
+        }
+
+        this.positionMap.isBuilt = true;
+    }
+
+    binarySearchOriginal(processedTimes, targetProcessedTime, speedProfile) {
+        let left = 0;
+        let right = processedTimes.length - 1;
+
+        while (left < right) {
+            const mid = Math.floor((left + right) / 2);
+            if (processedTimes[mid] < targetProcessedTime) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+
+        // Linear interpolation for better precision
+        if (left > 0 && left < processedTimes.length) {
+            const t0 = processedTimes[left - 1];
+            const t1 = processedTimes[left];
+            const ratio = (t1 === t0) ? 0 : (targetProcessedTime - t0) / (t1 - t0);
+            const frame0 = speedProfile[(left - 1) * 2];
+            const frame1 = speedProfile[left * 2];
+            return ((frame0 / 100.0) + ratio * ((frame1 - frame0) / 100.0));
+        }
+
+        return speedProfile[left * 2] / 100.0;
+    }
+
+    originalToProcessedTime(originalTime) {
+        if (!this.positionMap.isBuilt || !this.positionMap.originalToProcessed) {
+            return originalTime;
+        }
+
+        const speedProfile = this.rowConfig.find(r => r.id === 'speedProfile').data;
+        if (!speedProfile) return originalTime;
+
+        const targetFrame = originalTime * 100;
+        const processedTimes = this.positionMap.originalToProcessed;
+        
+        let left = 0;
+        let right = (speedProfile.length / 2) - 1;
+
+        while (left < right) {
+            const mid = Math.floor((left + right) / 2);
+            if (speedProfile[mid * 2] < targetFrame) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+
+        if (left > 0 && left < processedTimes.length) {
+            const f0 = speedProfile[(left - 1) * 2];
+            const f1 = speedProfile[left * 2];
+            const ratio = (f1 === f0) ? 0 : (targetFrame - f0) / (f1 - f0);
+            const p0 = processedTimes[left - 1];
+            const p1 = processedTimes[left];
+            return p0 + ratio * (p1 - p0);
+        }
+
+        return processedTimes[left];
+    }
+
+    processedToOriginalTime(processedTime) {
+        if (!this.positionMap.isBuilt || !this.positionMap.processedToOriginal) {
+            return processedTime; // Fallback: assume 1x speed
+        }
+
+        const array = this.positionMap.processedToOriginal;
+        const ratio = processedTime / this.positionMap.processedDuration;
+        const idx = Math.min(Math.max(Math.floor(ratio * (array.length - 1)), 0), array.length - 1);
+
+        // Linear interpolation
+        if (idx < array.length - 1) {
+            const t = (ratio * (array.length - 1)) - idx;
+            return array[idx] + t * (array[idx + 1] - array[idx]);
+        }
+
+        return array[idx];
     }
 
     bindEvents() {
@@ -733,6 +867,60 @@ export class WaveformViewer {
             this.ctx.setLineDash([4, 4]);
             this.ctx.strokeRect(x1, 0, x2 - x1, this.height);
             this.ctx.setLineDash([]);
+        }
+
+        // Draw bifurcated playhead (for inactive buffer)
+        if (this.positionMap.isBuilt && this.playbackState.currentTime >= 0) {
+            const currentTime = this.playbackState.currentTime;
+            const isActiveOriginal = this.playbackState.activeBuffer === 'original';
+
+            // Calculate position in inactive buffer
+            let inactiveTime;
+            if (isActiveOriginal) {
+                // Playing original: show where we'd be in processed
+                inactiveTime = this.originalToProcessedTime(currentTime);
+            } else {
+                // Playing processed: show where we'd be in original
+                inactiveTime = this.processedToOriginalTime(currentTime);
+            }
+
+            // Find inactive row bounds
+            const inactiveRow = this.rowConfig.find(r =>
+                (isActiveOriginal && r.id === 'processed') ||
+                (!isActiveOriginal && r.id === 'original')
+            );
+
+            if (inactiveRow && inactiveRow.data) {
+                const rowHeight = this.height * inactiveRow.heightRatio;
+                let currentY = 0;
+
+                // Calculate Y offset for inactive row
+                for (const row of this.rowConfig) {
+                    if (row.id === inactiveRow.id) break;
+                    currentY += this.height * row.heightRatio;
+                }
+
+                const x = this.timeToX(inactiveTime);
+
+                if (x >= -5 && x <= this.width + 5) {
+                    this.ctx.strokeStyle = this.colors.bifurcated;
+                    this.ctx.lineWidth = 1;
+                    this.ctx.setLineDash([4, 4]); // Dashed line
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, currentY);
+                    this.ctx.lineTo(x, currentY + rowHeight);
+                    this.ctx.stroke();
+                    this.ctx.setLineDash([]); // Reset
+
+                    // Smaller triangle marker
+                    this.ctx.fillStyle = this.colors.bifurcated;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x - 3, currentY);
+                    this.ctx.lineTo(x + 3, currentY);
+                    this.ctx.lineTo(x, currentY + 4);
+                    this.ctx.fill();
+                }
+            }
         }
 
         // Draw Playhead

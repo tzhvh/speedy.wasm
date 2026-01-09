@@ -579,12 +579,6 @@ class SpeedyDemo {
                 outputChunks.push(output);
             }
 
-            // Retrieve and set speed profile data
-            const speedProfile = sonic.getSpeedProfile();
-            if (speedProfile) {
-                this.waveformViewer.setSpeedProfile(speedProfile);
-            }
-
             const endTime = performance.now();
             const procTime = endTime - startTime;
 
@@ -599,6 +593,17 @@ class SpeedyDemo {
 
             this.processedBuffer = this.audioContext.createBuffer(1, totalLength, sampleRate);
             this.processedBuffer.copyToChannel(result, 0);
+
+            // Build position map for bifurcated playhead
+            const speedProfile = sonic.getSpeedProfile();
+            if (speedProfile && this.originalBuffer && this.processedBuffer) {
+                this.waveformViewer.setSpeedProfile(speedProfile);
+                this.waveformViewer.buildPositionMap(
+                    this.originalBuffer.duration,
+                    this.processedBuffer.duration,
+                    speedProfile
+                );
+            }
 
             this.log(`Done! Original: ${this.originalBuffer.duration.toFixed(2)}s, Processed: ${this.processedBuffer.duration.toFixed(2)}s`);
 
