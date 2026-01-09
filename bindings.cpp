@@ -177,6 +177,17 @@ struct SpeedyStreamWrapper {
     }
 
     /**
+     * Zero-copy version of addData.
+     * @param input_ptr Pointer to float array in WASM memory
+     * @param size Number of samples
+     * @param at_time Frame timestamp
+     */
+    void addDataPtr(uintptr_t input_ptr, int size, int64_t at_time) {
+        float* data = reinterpret_cast<float*>(input_ptr);
+        speedyAddData(stream, data, at_time);
+    }
+
+    /**
      * Add audio data to the Speedy stream (int16 version).
      * The input array must have inputFrameSize() samples.
      * @param input_array Int16Array containing audio samples
@@ -287,6 +298,17 @@ struct SonicStreamWrapper {
     }
 
     /**
+     * Zero-copy write floating-point audio samples to the stream.
+     * @param input_ptr Pointer to float array in WASM memory
+     * @param sample_count Number of samples to write (per channel)
+     * @return Number of samples actually written
+     */
+    int writeFloatToStreamPtr(uintptr_t input_ptr, int sample_count) {
+        const float* data = reinterpret_cast<const float*>(input_ptr);
+        return sonicWriteFloatToStream(stream, data, sample_count);
+    }
+
+    /**
      * Read floating-point audio samples from the stream.
      * @param buffer_size Maximum number of samples to read (per channel)
      * @return Float32Array with samples, or undefined if no data available
@@ -305,6 +327,17 @@ struct SonicStreamWrapper {
         output.resize(samples_read * numChannels);
 
         return floatVectorToJsArray(output);
+    }
+
+    /**
+     * Zero-copy read floating-point audio samples from the stream.
+     * @param output_ptr Pointer to float array in WASM memory
+     * @param buffer_size Maximum number of samples to read (per channel)
+     * @return Number of samples actually read
+     */
+    int readFloatFromStreamPtr(uintptr_t output_ptr, int buffer_size) {
+        float* data = reinterpret_cast<float*>(output_ptr);
+        return sonicReadFloatFromStream(stream, data, buffer_size);
     }
 
     /**
@@ -359,6 +392,14 @@ struct SonicStreamWrapper {
     }
 
     /**
+     * Get the current playback speed.
+     * @return Speed multiplier
+     */
+    float getSpeed() {
+        return sonicGetSpeed(stream);
+    }
+
+    /**
      * Set the sample rate for pitch shifting.
      * This is independent of speed and affects pitch.
      * @param rate Sample rate multiplier
@@ -389,9 +430,7 @@ struct SonicStreamWrapper {
      * @return Number of samples available (per channel)
      */
     int samplesAvailable() {
-        // This function may not be available in all Sonic versions
-        // Return 0 if not implemented
-        return 0;
+        return sonicSamplesAvailable(stream);
     }
 
     // Prevent copying
@@ -432,6 +471,7 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
         .function("inputFrameSize", &SpeedyStreamWrapper::inputFrameSize)
         .function("inputFrameStep", &SpeedyStreamWrapper::inputFrameStep)
         .function("addData", &SpeedyStreamWrapper::addData)
+        .function("addDataPtr", &SpeedyStreamWrapper::addDataPtr, emscripten::allow_raw_pointers())
         .function("addDataShort", &SpeedyStreamWrapper::addDataShort)
         .function("computeTension", &SpeedyStreamWrapper::computeTension)
         .function("computeSpeedFromTension", &SpeedyStreamWrapper::computeSpeedFromTension)
@@ -442,11 +482,14 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
     emscripten::class_<SonicStreamWrapper>("SonicStream")
         .constructor<int, int>()
         .function("writeFloatToStream", &SonicStreamWrapper::writeFloatToStream)
+        .function("writeFloatToStreamPtr", &SonicStreamWrapper::writeFloatToStreamPtr, emscripten::allow_raw_pointers())
         .function("readFloatFromStream", &SonicStreamWrapper::readFloatFromStream)
+        .function("readFloatFromStreamPtr", &SonicStreamWrapper::readFloatFromStreamPtr, emscripten::allow_raw_pointers())
         .function("writeShortToStream", &SonicStreamWrapper::writeShortToStream)
         .function("readShortFromStream", &SonicStreamWrapper::readShortFromStream)
         .function("flushStream", &SonicStreamWrapper::flushStream)
         .function("setSpeed", &SonicStreamWrapper::setSpeed)
+        .function("getSpeed", &SonicStreamWrapper::getSpeed)
         .function("setRate", &SonicStreamWrapper::setRate)
         .function("enableNonlinearSpeedup", &SonicStreamWrapper::enableNonlinearSpeedup)
         .function("setDurationFeedbackStrength", &SonicStreamWrapper::setDurationFeedbackStrength)

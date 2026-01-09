@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speedy WASM - Streaming Demo</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #bb86fc;
+            --text-color: #e0e0e0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--surface-color);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h1 { color: var(--primary-color); margin-top: 0; }
+        .control-group {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        button {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        .status {
+            font-family: monospace;
+            padding: 1rem;
+            background: #000;
+            border-radius: 4px;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            height: 150px;
+            overflow-y: auto;
+        }
+        .meter {
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .meter-fill {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speedy Streaming Demo</h1>
+        <p>This demo uses AudioWorklet and SharedArrayBuffer (Ring Buffer) for low-latency streaming.</p>
+        
+        <div class="control-group">
+            <h3>1. Load Audio</h3>
+            <input type="file" id="audioFile" accept="audio/*">
+        </div>
+
+        <div class="control-group">
+            <h3>2. Controls</h3>
+            <button id="playBtn" disabled>Play Stream</button>
+            <button id="stopBtn" disabled>Stop</button>
+            
+            <div style="margin-top: 1rem;">
+                <label>Speed: <span id="speedVal">1.0</span>x</label>
+                <input type="range" id="speed" min="0.5" max="4.0" step="0.1" value="1.0">
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <label>Buffer Level:</label>
+                <div class="meter">
+                    <div id="bufferLevel" class="meter-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="statusLog"></div>
+    </div>
+
+    <script type="module" src="streaming-demo.js"></script>
+</body>
+</html>
