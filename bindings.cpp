@@ -80,19 +80,14 @@ namespace {
             return emscripten::val::undefined();
         }
 
-        // Create a Float32Array from the vector data
-        emscripten::val heap = emscripten::val::module_property("HEAPF32");
-        emscripten::val buffer = heap["buffer"];
+        // Create a Float32Array of the correct size
+        emscripten::val result = emscripten::val::global("Float32Array").new_(vec.size());
 
-        // Create a view into the heap (this is a reference, not a copy)
-        emscripten::val memory_view = emscripten::val::global("Float32Array").new_(
-            buffer,
-            reinterpret_cast<uintptr_t>(vec.data()) * sizeof(float),
-            vec.size()
-        );
+        // Copy each element from the vector to the JavaScript array
+        for (size_t i = 0; i < vec.size(); ++i) {
+            result.set(i, vec[i]);
+        }
 
-        // Create a copy to return (safe for GC)
-        emscripten::val result = emscripten::val::global("Float32Array").new_(memory_view);
         return result;
     }
 
@@ -102,16 +97,14 @@ namespace {
             return emscripten::val::undefined();
         }
 
-        emscripten::val heap = emscripten::val::module_property("HEAP16");
-        emscripten::val buffer = heap["buffer"];
+        // Create an Int16Array of the correct size
+        emscripten::val result = emscripten::val::global("Int16Array").new_(vec.size());
 
-        emscripten::val memory_view = emscripten::val::global("Int16Array").new_(
-            buffer,
-            reinterpret_cast<uintptr_t>(vec.data()) * sizeof(int16_t),
-            vec.size()
-        );
+        // Copy each element from the vector to the JavaScript array
+        for (size_t i = 0; i < vec.size(); ++i) {
+            result.set(i, vec[i]);
+        }
 
-        emscripten::val result = emscripten::val::global("Int16Array").new_(memory_view);
         return result;
     }
 }

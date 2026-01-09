@@ -1,4 +1,7 @@
-*.md
+#*.md
+
+# Documentation files (to avoid SBOM confusion)
+docs/*.md
 
 # Compiled WASM outputs
 dist/
