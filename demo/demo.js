@@ -23,7 +23,7 @@ class SpeedyDemo {
         };
         
         // UI Elements
-        this.statusEl = document.getElementById('status');
+        this.statusLogEl = document.getElementById('statusLog');
         this.processBtn = document.getElementById('processBtn');
         this.stopBtn = document.getElementById('stopBtn');
         this.fileInput = document.getElementById('audioFile');
@@ -39,6 +39,8 @@ class SpeedyDemo {
             nonlinear: 1.0,
             feedback: 0.1
         };
+
+        this.selectedBufferType = 'original'; // 'original' or 'processed'
 
         this.stats = {
             input: {},
@@ -68,20 +70,21 @@ class SpeedyDemo {
         this.processBtn.addEventListener('click', () => this.processAndPlay());
         this.stopBtn.addEventListener('click', () => this.stopPlayback());
 
-        // Playback controls
+        // Buffer Selection (Cassette Toggles)
         document.getElementById('playOriginalBtn').addEventListener('click', () => {
-            this.switchToBuffer('original');
+            this.setBufferSelection('original');
         });
 
         document.getElementById('playProcessedBtn').addEventListener('click', () => {
-            this.switchToBuffer('processed');
+            this.setBufferSelection('processed');
         });
 
-        document.getElementById('pauseBtn').addEventListener('click', () => {
-            if (this.playbackState.isPaused) {
-                this.resumePlayback();
-            } else {
+        // Play/Pause
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
                 this.pausePlayback();
+            } else {
+                this.resumePlayback();
             }
         });
 
@@ -111,31 +114,14 @@ class SpeedyDemo {
     bindWaveformEvents() {
         // Connect waveform viewer callbacks
         this.waveformViewer.onSeek = (time) => {
-             if (!this.originalBuffer && !this.processedBuffer) return;
+             const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+             if (!buffer) return;
              
-             // Determine buffer to use
-             let buffer = null;
-             let bufferType = this.playbackState.currentBuffer;
-
-             if (bufferType === 'original' && this.originalBuffer) {
-                 buffer = this.originalBuffer;
-             } else if (bufferType === 'processed' && this.processedBuffer) {
-                 buffer = this.processedBuffer;
-             } else if (this.originalBuffer) {
-                 buffer = this.originalBuffer;
-                 bufferType = 'original';
-             } else if (this.processedBuffer) {
-                 buffer = this.processedBuffer;
-                 bufferType = 'processed';
-             }
-
-             if (buffer) {
-                 // Clamp time
-                 time = Math.max(0, Math.min(time, buffer.duration));
-                 
-                 this.stopPlayback();
-                 this.playBuffer(buffer, bufferType, time);
-             }
+             // Clamp time
+             time = Math.max(0, Math.min(time, buffer.duration));
+             
+             this.stopPlayback(false); // Don't reset view completely
+             this.playBuffer(buffer, this.selectedBufferType, time);
         };
         
         this.waveformViewer.onZoom = (level) => {
@@ -168,63 +154,222 @@ class SpeedyDemo {
     }
 
     log(msg) {
-        this.statusEl.textContent = msg;
-        console.log(msg);
+        // Create timestamp
+        const now = new Date();
+        const ts = now.toTimeString().split(' ')[0]; // HH:MM:SS
+        
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'log-time';
+        timeSpan.textContent = ts;
+        
+        const msgSpan = document.createElement('span');
+        msgSpan.className = 'log-msg';
+        msgSpan.textContent = msg;
+        
+        entry.appendChild(timeSpan);
+        entry.appendChild(msgSpan);
+        
+        this.statusLogEl.appendChild(entry);
+        this.statusLogEl.scrollTop = this.statusLogEl.scrollHeight;
+        
+        console.log(`[${ts}] ${msg}`);
     }
 
-    updateDisplayStats() {
-        const s = document.getElementById('statsContainer');
-        s.style.display = 'block';
-
-        // Input
-        if (this.stats.input.duration) {
-            document.getElementById('inDuration').textContent = this.stats.input.duration.toFixed(3) + 's';
-            document.getElementById('inSampleRate').textContent = this.stats.input.sampleRate + ' Hz';
-            document.getElementById('inChannels').textContent = this.stats.input.channels;
-            document.getElementById('inSamples').textContent = this.stats.input.length.toLocaleString();
-        }
-
-        // Params
-        document.getElementById('paramSpeed').textContent = this.params.speed.toFixed(1) + 'x';
-        document.getElementById('paramNonlinear').textContent = this.params.nonlinear.toFixed(1);
-
-        // Perf
-        if (this.stats.perf.timeMs) {
-            document.getElementById('procTime').textContent = this.stats.perf.timeMs.toFixed(1) + ' ms';
-            const rtf = this.stats.input.duration / (this.stats.perf.timeMs / 1000);
-            document.getElementById('rtFactor').textContent = rtf.toFixed(1) + 'x';
+    setBufferSelection(type) {
+        if (this.selectedBufferType === type) return;
+        
+        this.selectedBufferType = type;
+        
+        // If playing, switch audio stream
+        if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
+            // Get current relative progress
+            const elapsed = (this.audioContext.currentTime - this.playbackState.startTime) % this.playbackState.duration;
+            const progress = elapsed / this.playbackState.duration;
+            
+            const newBuffer = type === 'original' ? this.originalBuffer : this.processedBuffer;
+            if (newBuffer) {
+                const newTime = progress * newBuffer.duration;
+                this.stopPlayback(false);
+                this.playBuffer(newBuffer, type, newTime);
+            }
         } else {
-            document.getElementById('procTime').textContent = '-';
-            document.getElementById('rtFactor').textContent = '-';
+             // Just update UI and Waveform view
+             this.updateButtonStates();
+             this.waveformViewer.setPlaybackState(
+                 this.playbackState.isPlaying, 
+                 this.playbackState.currentTime, // Maintain cursor visual
+                 type // Update active buffer view
+             );
         }
+    }
 
-        // Output
-        if (this.stats.output.duration) {
-            document.getElementById('outDuration').textContent = this.stats.output.duration.toFixed(3) + 's';
-            document.getElementById('outSamples').textContent = this.stats.output.length.toLocaleString();
+    // ... (rest of methods)
 
-            const ratio = (this.stats.input.duration / this.stats.output.duration).toFixed(2);
-            document.getElementById('compressionRatio').textContent = ratio + 'x';
+    updateButtonStates() {
+        const playOriginalBtn = document.getElementById('playOriginalBtn');
+        const playProcessedBtn = document.getElementById('playProcessedBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
 
-            // Est WAV size (16-bit mono)
-            const bytes = this.stats.output.length * 2;
-            document.getElementById('outSize').textContent = (bytes / 1024).toFixed(1) + ' KB';
+        // Toggle Buttons State (Cassette Logic)
+        playOriginalBtn.disabled = !this.originalBuffer;
+        playProcessedBtn.disabled = !this.processedBuffer;
+        
+        playOriginalBtn.classList.toggle('active', this.selectedBufferType === 'original');
+        playProcessedBtn.classList.toggle('active', this.selectedBufferType === 'processed');
+
+        // Play/Pause Button
+        const hasActiveBuffer = (this.selectedBufferType === 'original' && this.originalBuffer) || 
+                              (this.selectedBufferType === 'processed' && this.processedBuffer);
+        
+        playPauseBtn.disabled = !hasActiveBuffer;
+        
+        const isPlaying = this.playbackState.isPlaying && !this.playbackState.isPaused;
+        playIcon.style.display = isPlaying ? 'none' : 'block';
+        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+        
+        // Optional: Highlight play/pause if playing
+        playPauseBtn.classList.toggle('active', isPlaying);
+    }
+
+    pausePlayback() {
+        if (this.sourceNode && this.playbackState.isPlaying && !this.playbackState.isPaused) {
+            this.playbackState.isPaused = true;
+            this.playbackState.pauseTime = this.audioContext.currentTime;
+            this.sourceNode.stop();
+            this.sourceNode = null;
+            cancelAnimationFrame(this.playbackState.animationId);
+            this.updateButtonStates();
+            
+            this.waveformViewer.setPlaybackState(
+                true, // Keep "playing" visually (just paused)
+                this.playbackState.pauseTime - this.playbackState.startTime,
+                this.selectedBufferType
+            );
+        }
+    }
+
+    resumePlayback() {
+        const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+        if (!buffer) return;
+
+        if (this.playbackState.isPaused) {
+            const elapsed = this.playbackState.pauseTime - this.playbackState.startTime;
+            this.playBuffer(buffer, this.selectedBufferType, elapsed);
         } else {
+            // Start from beginning
+            this.playBuffer(buffer, this.selectedBufferType, 0);
+        }
+    }
+
+    playBuffer(buffer, bufferType, offset = 0) {
+        this.sourceNode = this.audioContext.createBufferSource();
+        this.sourceNode.buffer = buffer;
+        this.sourceNode.connect(this.audioContext.destination);
+
+        this.playbackState.isPlaying = true;
+        this.playbackState.isPaused = false;
+        this.playbackState.startTime = this.audioContext.currentTime - offset;
+        this.playbackState.duration = buffer.duration;
+        this.playbackState.currentBuffer = bufferType;
+        this.selectedBufferType = bufferType; // Ensure sync
+
+        this.sourceNode.start(0, offset);
+        this.startPlaybackAnimation();
+        this.updateButtonStates();
+
+        this.sourceNode.onended = () => {
+            if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
+                this.playbackState.isPlaying = false;
+                this.playbackState.currentBuffer = null;
+                cancelAnimationFrame(this.playbackState.animationId);
+                this.updateButtonStates();
+                this.log('Playback finished');
+                
+                this.waveformViewer.setPlaybackState(false, 0, this.selectedBufferType);
+            }
+        };
+    }
+
+    stopPlayback(reset = true) {
+        if (this.sourceNode) {
+            try {
+                this.sourceNode.stop();
+            } catch (e) {} 
+            this.sourceNode = null;
+        }
+        if (this.playbackState.animationId) {
+            cancelAnimationFrame(this.playbackState.animationId);
+            this.playbackState.animationId = null;
+        }
+        this.playbackState.isPlaying = false;
+        this.playbackState.isPaused = false;
+        this.updateButtonStates();
+        
+        if (reset) {
+            this.waveformViewer.setPlaybackState(false, 0, this.selectedBufferType);
+        }
+    }
+
+    async initialize() {
+        try {
+            this.log('Loading WASM module...');
+            const Module = await initSpeedy();
+            this.SonicStream = Module.SonicStream;
+            this.moduleLoaded = true;
+            this.log('Ready. Select an audio file.');
+
+            // Init AudioContext if needed
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        } catch (err) {
+            this.log('Failed to load WASM module: ' + err.message);
+        }
+    }
+
+    async handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        this.log(`Loading file: ${file.name}`);
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            this.audioContext = this.audioContext || new AudioContext();
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+
+            this.originalBuffer = audioBuffer;
+            this.log(`File loaded: ${audioBuffer.duration.toFixed(2)}s, ${audioBuffer.sampleRate}Hz, ${audioBuffer.numberOfChannels}ch`);
+
+            // Only enable process button if module is loaded
+            this.processBtn.disabled = !this.moduleLoaded;
+            this.waveformViewer.setData(audioBuffer, null);
+            this.updateButtonStates();
+            this.updateInputStats();
+
+            // Clear output stats from previous run
             document.getElementById('outDuration').textContent = '-';
             document.getElementById('outSamples').textContent = '-';
             document.getElementById('compressionRatio').textContent = '-';
             document.getElementById('outSize').textContent = '-';
+            document.getElementById('procTime').textContent = '-';
+            document.getElementById('rtFactor').textContent = '-';
+        } catch (err) {
+            this.log('Error loading file: ' + err.message);
         }
     }
 
     analyzeAudio(float32Array) {
-        let sum = 0;
         let sumSquares = 0;
         let peak = 0;
 
         for (let i = 0; i < float32Array.length; i++) {
             const sample = Math.abs(float32Array[i]);
-            sum += sample;
             sumSquares += sample * sample;
             if (sample > peak) peak = sample;
         }
@@ -236,8 +381,8 @@ class SpeedyDemo {
     }
 
     updateAudioAnalysisDisplay(inputData, outputData, chunkCount) {
-        const a = document.getElementById('audioAnalysisContainer');
-        a.style.display = 'block';
+        const container = document.getElementById('audioAnalysisContainer');
+        container.style.display = 'block';
 
         const inputAnalysis = this.analyzeAudio(inputData);
         document.getElementById('inPeak').textContent = inputAnalysis.peak;
@@ -252,200 +397,40 @@ class SpeedyDemo {
         document.getElementById('chunksProcessed').textContent = chunkCount;
     }
 
-    updateTimeDisplay(current, total) {
-        const fmt = (t) => {
-            const m = Math.floor(t / 60);
-            const s = Math.floor(t % 60);
-            return `${m}:${s.toString().padStart(2, '0')}`;
-        };
-        document.getElementById('timeDisplay').textContent = `${fmt(current)} / ${fmt(total)}`;
-    }
-
-    updateButtonStates() {
-        const playOriginalBtn = document.getElementById('playOriginalBtn');
-        const playProcessedBtn = document.getElementById('playProcessedBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-
-        playOriginalBtn.disabled = !this.originalBuffer;
-        playProcessedBtn.disabled = !this.processedBuffer;
-        pauseBtn.disabled = !this.playbackState.isPlaying;
-        pauseBtn.textContent = this.playbackState.isPaused ? 'Resume' : 'Pause';
-
-        // Update active button styling
-        playOriginalBtn.classList.toggle('active', this.playbackState.currentBuffer === 'original' && this.playbackState.isPlaying && !this.playbackState.isPaused);
-        playProcessedBtn.classList.toggle('active', this.playbackState.currentBuffer === 'processed' && this.playbackState.isPlaying && !this.playbackState.isPaused);
-    }
-
-    pausePlayback() {
-        if (this.sourceNode && this.playbackState.isPlaying && !this.playbackState.isPaused) {
-            this.playbackState.isPaused = true;
-            this.playbackState.pauseTime = this.audioContext.currentTime;
-            this.sourceNode.stop();
-            this.sourceNode = null;
-            cancelAnimationFrame(this.playbackState.animationId);
-            this.updateButtonStates();
-            
-            this.waveformViewer.setPlaybackState(
-                this.playbackState.isPlaying && !this.playbackState.isPaused, 
-                this.playbackState.pauseTime - this.playbackState.startTime,
-                this.playbackState.currentBuffer
-            );
-        }
-    }
-
-    resumePlayback() {
-        if (this.playbackState.isPaused) {
-            const elapsed = this.playbackState.pauseTime - this.playbackState.startTime;
-            const buffer = this.playbackState.currentBuffer === 'original' ? this.originalBuffer : this.processedBuffer;
-            if (buffer) {
-                this.playBuffer(buffer, this.playbackState.currentBuffer, elapsed);
-            }
-        }
-    }
-
-    playBuffer(buffer, bufferType, offset = 0) {
-        this.sourceNode = this.audioContext.createBufferSource();
-        this.sourceNode.buffer = buffer;
-        this.sourceNode.connect(this.audioContext.destination);
-
-        this.playbackState.isPlaying = true;
-        this.playbackState.isPaused = false;
-        this.playbackState.startTime = this.audioContext.currentTime - offset;
-        this.playbackState.duration = buffer.duration;
-        this.playbackState.currentBuffer = bufferType;
-
-        this.sourceNode.start(0, offset);
-        this.startPlaybackAnimation();
-        this.updateButtonStates();
-
-        this.sourceNode.onended = () => {
-            if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
-                this.playbackState.isPlaying = false;
-                this.playbackState.currentBuffer = null;
-                cancelAnimationFrame(this.playbackState.animationId);
-                this.updateButtonStates();
-                this.log('Playback finished');
-                
-                this.waveformViewer.setPlaybackState(false, 0, null);
-            }
-        };
-    }
-
-    switchToBuffer(bufferType) {
-        const buffer = bufferType === 'original' ? this.originalBuffer : this.processedBuffer;
-        if (!buffer) return;
-
-        if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
-            const elapsed = (this.audioContext.currentTime - this.playbackState.startTime) % this.playbackState.duration;
-            this.stopPlayback();
-            this.playBuffer(buffer, bufferType, elapsed);
-        } else {
-            this.playBuffer(buffer, bufferType, 0);
-        }
-    }
-
-    startPlaybackAnimation() {
-        const animate = () => {
-            if (!this.playbackState.isPlaying || this.playbackState.isPaused) {
-                this.playbackState.animationId = null;
-                return;
-            }
-
-            const elapsed = (this.audioContext.currentTime - this.playbackState.startTime) % this.playbackState.duration;
-            
-            this.waveformViewer.setPlaybackState(true, elapsed, this.playbackState.currentBuffer);
-
-            this.updateTimeDisplay(elapsed, this.playbackState.duration);
-            this.playbackState.animationId = requestAnimationFrame(animate);
-        };
-
-        this.playbackState.animationId = requestAnimationFrame(animate);
-    }
-
-    async initialize() {
-        try {
-            this.log('Loading WASM module...');
-            const Module = await initSpeedy();
-            this.SonicStream = Module.SonicStream;
-            this.moduleLoaded = true;
-            this.log('Ready. Select an audio file.');
-            
-            // Init AudioContext on first user interaction if needed
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            this.log(`Error loading WASM: ${e.message}`);
-            console.error(e);
-        }
-    }
-
-    async handleFileSelect(e) {
-        if (!e.target.files.length) return;
-        
-        const file = e.target.files[0];
-        this.processBtn.disabled = true;
-        this.stopBtn.disabled = true;
-        
-        try {
-            this.log(`Loading ${file.name}...`);
-            const arrayBuffer = await file.arrayBuffer();
-            this.log('Decoding audio...');
-            this.originalBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            
-            this.log(`Loaded: ${this.originalBuffer.duration.toFixed(2)}s, ${this.originalBuffer.numberOfChannels}ch, ${this.originalBuffer.sampleRate}Hz`);
-            this.processBtn.disabled = !this.moduleLoaded;
-
-            // Enable playback button for original audio
-            this.updateButtonStates();
-            
-            // Update Stats
-            this.stats.input = {
-                duration: this.originalBuffer.duration,
-                sampleRate: this.originalBuffer.sampleRate,
-                channels: this.originalBuffer.numberOfChannels,
-                length: this.originalBuffer.length
-            };
-            this.stats.output = {}; // Clear output stats
-            this.stats.perf = {};   // Clear perf stats
-            this.updateDisplayStats();
-
-            // Set data to viewer
-            this.waveformViewer.setData(this.originalBuffer, null);
-            
-        } catch (err) {
-            this.log(`Error loading file: ${err.message}`);
-        }
-    }
-
     async processAndPlay() {
         if (!this.originalBuffer || this.isProcessing) return;
-        
+
         this.isProcessing = true;
-        this.processBtn.disabled = true;
-        this.stopBtn.disabled = true;
         this.indicator.style.display = 'inline-block';
-        
+        this.processBtn.disabled = true;
+        this.log('Processing started...');
+
         const startTime = performance.now();
 
         try {
+            if (!this.moduleLoaded) {
+                await this.initialize();
+            }
+
             this.stopPlayback();
             this.log('Processing...');
-            
+
             // Create SonicStream
             const channels = 1; // Force mono
             const sampleRate = this.originalBuffer.sampleRate;
-            
+
             const sonic = new this.SonicStream(sampleRate, channels);
             sonic.setSpeed(this.params.speed);
             sonic.enableNonlinearSpeedup(this.params.nonlinear);
             sonic.setDurationFeedbackStrength(this.params.feedback);
-            
-            // Prepare input data
+
+            // Prepare input data (convert to mono if needed)
             const inputData = this.getMonoData(this.originalBuffer);
-            
+
             // Process in chunks
             const chunkSize = 8192;
             const outputChunks = [];
-            
+
             for (let offset = 0; offset < inputData.length; offset += chunkSize) {
                 const chunk = inputData.subarray(offset, offset + chunkSize);
 
@@ -480,32 +465,24 @@ class SpeedyDemo {
                 result.set(chunk, offset);
                 offset += chunk.length;
             }
-            
+
             this.processedBuffer = this.audioContext.createBuffer(1, totalLength, sampleRate);
             this.processedBuffer.copyToChannel(result, 0);
-            
+
             this.log(`Done! Original: ${this.originalBuffer.duration.toFixed(2)}s, Processed: ${this.processedBuffer.duration.toFixed(2)}s`);
 
-            this.stats.perf = { timeMs: procTime };
-            this.stats.output = {
-                duration: this.processedBuffer.duration,
-                length: totalLength
-            };
-            this.updateDisplayStats();
+            this.updateOutputStats(procTime / 1000);
             this.updateAudioAnalysisDisplay(inputData, result, outputChunks.length);
-
-            // Update viewer
             this.waveformViewer.setData(this.originalBuffer, this.processedBuffer);
-            this.playBuffer(this.processedBuffer, 'processed');
-            
-        } catch (e) {
-            this.log(`Error processing: ${e.message}`);
-            console.error(e);
+            this.setBufferSelection('processed');
+            this.playBuffer(this.processedBuffer, 'processed', 0);
+
+        } catch (err) {
+            this.log('Processing error: ' + err.message);
         } finally {
             this.isProcessing = false;
-            this.processBtn.disabled = false;
-            this.stopBtn.disabled = false;
             this.indicator.style.display = 'none';
+            this.processBtn.disabled = false;
         }
     }
 
@@ -513,33 +490,78 @@ class SpeedyDemo {
         if (audioBuffer.numberOfChannels === 1) {
             return audioBuffer.getChannelData(0);
         }
-        
+
         const ch0 = audioBuffer.getChannelData(0);
         const ch1 = audioBuffer.getChannelData(1);
         const mono = new Float32Array(ch0.length);
-        
+
         for (let i = 0; i < ch0.length; i++) {
             mono[i] = (ch0[i] + ch1[i]) / 2;
         }
         return mono;
     }
 
-    stopPlayback() {
-        if (this.sourceNode) {
-            try {
-                this.sourceNode.stop();
-            } catch (e) {} 
-            this.sourceNode = null;
-        }
-        if (this.playbackState.animationId) {
-            cancelAnimationFrame(this.playbackState.animationId);
-            this.playbackState.animationId = null;
-        }
-        this.playbackState.isPlaying = false;
-        this.playbackState.isPaused = false;
-        this.updateButtonStates();
-        
-        this.waveformViewer.setPlaybackState(false, 0, null);
+    updateInputStats() {
+        if (!this.originalBuffer) return;
+        document.getElementById('inDuration').textContent = this.originalBuffer.duration.toFixed(2) + 's';
+        document.getElementById('inSampleRate').textContent = this.originalBuffer.sampleRate + ' Hz';
+        document.getElementById('inChannels').textContent = this.originalBuffer.numberOfChannels;
+        document.getElementById('inSamples').textContent = this.originalBuffer.length.toLocaleString();
+        document.getElementById('statsContainer').style.display = 'block';
+    }
+
+    updateOutputStats(procTimeSeconds) {
+        if (!this.processedBuffer) return;
+
+        // Duration and samples
+        document.getElementById('outDuration').textContent = this.processedBuffer.duration.toFixed(2) + 's';
+        document.getElementById('outSamples').textContent = this.processedBuffer.length.toLocaleString();
+
+        // Compression ratio (input / output)
+        const ratio = this.originalBuffer.duration / this.processedBuffer.duration;
+        document.getElementById('compressionRatio').textContent = ratio.toFixed(2) + 'x';
+
+        // Est WAV size (16-bit mono)
+        const bytes = this.processedBuffer.length * 2;
+        document.getElementById('outSize').textContent = (bytes / 1024).toFixed(1) + ' KB';
+
+        // Performance
+        document.getElementById('procTime').textContent = (procTimeSeconds * 1000).toFixed(1) + ' ms';
+        const rtf = this.originalBuffer.duration / procTimeSeconds;
+        document.getElementById('rtFactor').textContent = rtf.toFixed(1) + 'x';
+
+        // Parameters
+        document.getElementById('paramSpeed').textContent = this.params.speed.toFixed(1) + 'x';
+        document.getElementById('paramNonlinear').textContent = this.params.nonlinear.toFixed(1);
+    }
+
+    startPlaybackAnimation() {
+        const animate = () => {
+            if (!this.playbackState.isPlaying || this.playbackState.isPaused) return;
+
+            const elapsed = this.audioContext.currentTime - this.playbackState.startTime;
+            const duration = this.playbackState.duration;
+
+            if (elapsed >= duration) {
+                this.playbackState.currentTime = 0;
+                this.waveformViewer.setPlaybackState(false, 0, this.selectedBufferType);
+                return;
+            }
+
+            this.playbackState.currentTime = elapsed;
+            const timeStr = this.formatTime(elapsed) + ' / ' + this.formatTime(duration);
+            document.getElementById('timeDisplay').textContent = timeStr;
+
+            this.waveformViewer.setPlaybackState(true, elapsed, this.selectedBufferType);
+            this.playbackState.animationId = requestAnimationFrame(animate);
+        };
+        this.playbackState.animationId = requestAnimationFrame(animate);
+    }
+
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 }
 

@@ -303,6 +303,66 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-color); }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* New Styles for Log & Cassette Controls */
+        .log-container {
+            background-color: var(--info-box-bg);
+            border-top: 1px solid var(--border-color);
+            height: 120px;
+            overflow-y: auto;
+            padding: 8px 12px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px dotted var(--border-color);
+            padding-bottom: 2px;
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-time { color: var(--text-main); opacity: 0.7; min-width: 50px; }
+        .log-msg { flex: 1; word-break: break-word; }
+
+        .cassette-btn {
+            background-color: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+            border: none;
+            border-right: 1px solid var(--border-color);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .cassette-btn.active {
+            background-color: var(--input-focus-bg); /* Slightly darker/different */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+            color: var(--wave-playhead); /* Highlight active */
+            transform: translateY(1px);
+            border-top: 2px solid var(--border-color); /* simulate depth */
+        }
+        .cassette-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: var(--border-color); }
     </style>
 </head>
 <body>
@@ -352,15 +412,19 @@
                 <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
             </div>
 
-            <div style="display: grid; grid-template-columns: 3fr 1fr; border-top: 1px solid var(--border-color);">
-                <button id="processBtn" class="btn btn-primary" disabled style="height: 50px; font-size: 0.875rem; border-right: 1px solid var(--border-color);">
-                    <div id="processingIndicator" class="spinner" style="display:none; margin-right:12px; border-width: 3px;"></div>
+            <div style="border-top: 1px solid var(--border-color);">
+                <button id="processBtn" class="btn btn-primary" disabled style="height: 64px; width: 100%; font-size: 0.9rem; letter-spacing: 0.1em; font-weight: 700;">
+                    <div id="processingIndicator" class="spinner" style="display:none; margin-right:16px; border-width: 3px; width: 20px; height: 20px;"></div>
                     INITIATE PROCESSING
                 </button>
-                <button id="stopBtn" class="btn btn-danger" disabled style="height: 50px;">STOP</button>
             </div>
             
-            <div id="status" class="info-box" style="border-top: 1px solid var(--border-color);">Waiting for module to load...</div>
+            <div id="statusLog" class="log-container">
+                <div class="log-entry">
+                    <span class="log-time">SYS</span>
+                    <span class="log-msg">Ready.</span>
+                </div>
+            </div>
         </div>
 
         <!-- Right Panel: Statistics -->
@@ -401,7 +465,7 @@
                  <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
             </div>
 
-            <div class="info-box" style="justify-content:center; text-align:center; height:100%; border-top:none;" id="emptyStatsPlaceholder">
+            <div class="info-box" style="justify-content:center; text-align:center; border-top:none; padding: 20px;" id="emptyStatsPlaceholder">
                 Upload audio and process to view statistics
             </div>
         </div>
@@ -416,42 +480,79 @@
                     <p>Time-Domain Visualization</p>
                 </div>
                 <div style="display:flex; gap:12px; align-items:center;">
-                    <span id="timeDisplay" style="font-family:'SF Mono', monospace; font-size:0.75rem; color:var(--text-main);">0:00 / 0:00</span>
-                    <button id="themeToggle" class="btn btn-secondary" style="padding: 6px 12px; border:1px solid var(--border-color); width:auto;">THEME</button>
+                    <button id="themeToggle" class="btn btn-secondary" style="padding: 6px 12px; border:1px solid var(--border-color); width:auto; font-size: 0.65rem;">THEME</button>
                 </div>
             </div>
 
-            <!-- Toolbar -->
-            <div style="padding: 10px 20px; border-bottom: 1px solid var(--border-color); background: var(--panel-header-bg); display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-                <div class="button-group" style="border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; margin:0;">
-                    <button id="playOriginalBtn" class="btn btn-secondary" style="padding: 8px 12px; width: auto; border-right:1px solid var(--border-color);" disabled>Original</button>
-                    <button id="playProcessedBtn" class="btn btn-secondary" style="padding: 8px 12px; width: auto; border-right:1px solid var(--border-color);" disabled>Processed</button>
-                    <button id="pauseBtn" class="btn btn-secondary" style="padding: 8px 12px; width: auto; border:none;" disabled>Pause</button>
+            <!-- Enhanced Playback Toolbar -->
+            <div style="padding: 0; border-bottom: 1px solid var(--border-color); background: var(--panel-header-bg); display: flex; align-items: stretch; height: 48px; flex-wrap: nowrap; overflow: hidden;">
+                <!-- Main Playback Group -->
+                <div style="display: flex; border-right: 1px solid var(--border-color);">
+                    <button id="stopBtn" class="btn btn-secondary" style="width: 50px; border-right: 1px solid var(--border-color);" disabled title="Stop (Return to Start)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+                    </button>
+                    
+                    <button id="seekBackBtn" class="btn btn-secondary" style="width: 45px; border-right: 1px solid var(--border-color);" disabled title="Seek Backward 5s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+                    </button>
+                    
+                    <button id="playPauseBtn" class="btn btn-secondary" style="width: 80px; border-right: 1px solid var(--border-color); background: var(--btn-secondary-bg); font-weight: 700; color: var(--text-main); letter-spacing: 0.05em;" disabled title="Play/Pause">
+                        <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    </button>
+                    
+                    <button id="seekForwardBtn" class="btn btn-secondary" style="width: 45px; border-right: 1px solid var(--border-color);" disabled title="Seek Forward 5s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg>
+                    </button>
                 </div>
 
-                <div style="height: 24px; width: 1px; background: var(--border-color); margin: 0 4px;"></div>
+                <!-- Buffer Selection Group (Cassette Style) -->
+                <div style="display: flex; border-right: 1px solid var(--border-color);">
+                    <button id="playOriginalBtn" class="cassette-btn" style="width: 140px;" disabled>
+                        ORIGINAL
+                    </button>
+                    <button id="playProcessedBtn" class="cassette-btn" style="width: 150px;" disabled>
+                        PROCESSED
+                    </button>
+                </div>
 
-                <select id="viewMode" style="width: auto; padding: 4px 8px; font-size: 0.75rem;">
-                    <option value="fit">Fit to Window</option>
-                    <option value="realtime">Realtime Scale</option>
-                </select>
+                <!-- Time Display -->
+                <div style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-main); border-right: 1px solid var(--border-color); min-width: 140px; background: var(--panel-bg);">
+                    <span id="timeDisplay" style="letter-spacing: 0.05em;">0:00 / 0:00</span>
+                </div>
 
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <input type="checkbox" id="inspectMode">
-                    <label for="inspectMode" style="font-size:0.75rem; font-family:'SF Mono', monospace; color:var(--text-muted); margin:0;">Inspect</label>
+                <!-- View Options -->
+                <div style="display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0; background: var(--panel-header-bg);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Scale</span>
+                        <select id="viewMode" style="width: auto; padding: 2px 6px; font-size: 0.7rem; height: 24px; border: 1px solid var(--border-color); background: var(--panel-bg); font-weight: 600;">
+                            <option value="fit">FIT</option>
+                            <option value="realtime">RT</option>
+                        </select>
+                    </div>
+                    
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="inspectMode" style="width: 14px; height: 14px; cursor: pointer;">
+                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Inspect</span>
+                    </label>
                 </div>
             </div>
 
             <!-- Canvas -->
             <div style="position:relative; background:var(--wave-bg);">
-                <canvas id="waveformCanvas" style="width:100%; height: 300px; display:block;"></canvas>
+                <canvas id="waveformCanvas" style="width:100%; height: 280px; display:block;"></canvas>
             </div>
 
-            <!-- Footer Controls -->
-            <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); display:flex; align-items:center; gap:16px;">
-                <label style="font-size:0.75rem; font-family:'SF Mono', monospace; color:var(--text-muted); text-transform:uppercase;">Zoom</label>
-                <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0" style="flex:1;">
-                <button id="zoomToSelectBtn" class="btn btn-secondary" style="width:auto; border:1px solid var(--border-color); padding: 6px 12px;">Zoom Selection</button>
+            <!-- Footer Toolbar (Zoom & Selection) -->
+            <div style="padding: 0; border-top: 1px solid var(--border-color); display: flex; align-items: stretch; height: 40px; background: var(--panel-header-bg);">
+                <div style="display: flex; align-items: center; padding: 0 16px; border-right: 1px solid var(--border-color); flex: 1;">
+                    <label style="font-size: 0.6rem; font-family: 'SF Mono', monospace; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 12px;">Zoom</label>
+                    <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0" style="flex: 1; max-width: 300px;">
+                </div>
+                
+                <button id="zoomToSelectBtn" class="btn btn-secondary" style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;">
+                    ZOOM TO SELECTION
+                </button>
             </div>
         </div>
     </div>
@@ -482,10 +583,27 @@
             mutations.forEach((mutation) => {
                 if (mutation.target.style.display !== 'none') {
                     document.getElementById('emptyStatsPlaceholder').style.display = 'none';
+                    // Enable seek buttons when we have data
+                    document.getElementById('seekBackBtn').disabled = false;
+                    document.getElementById('seekForwardBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('playPauseBtn').disabled = false;
+                    // Note: Processed/Original buttons are enabled via updateButtonStates in demo.js
                 }
             });
         });
         observer.observe(statsContainer, { attributes: true, attributeFilter: ['style'] });
+
+        // Seek Logic
+        const seek = (delta) => {
+            if (!demo.waveformViewer) return;
+            const current = demo.playbackState.currentTime;
+            const target = Math.max(0, Math.min(demo.playbackState.duration, current + delta));
+            demo.waveformViewer.onSeek(target);
+        };
+
+        document.getElementById('seekBackBtn').addEventListener('click', () => seek(-5));
+        document.getElementById('seekForwardBtn').addEventListener('click', () => seek(5));
     </script>
 </body>
 </html>
