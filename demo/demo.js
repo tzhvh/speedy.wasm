@@ -477,9 +477,6 @@ class SpeedyDemo {
     }
 
     updateAudioAnalysisDisplay(inputData, outputData, chunkCount) {
-        const container = document.getElementById('audioAnalysisContainer');
-        container.style.display = 'block';
-
         const inputAnalysis = this.analyzeAudio(inputData);
         document.getElementById('inPeak').textContent = inputAnalysis.peak;
         document.getElementById('inRMS').textContent = inputAnalysis.rms;

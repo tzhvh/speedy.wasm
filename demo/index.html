@@ -279,10 +279,39 @@
             align-items: center;
         }
 
+        .stats-scroll-container {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            position: relative;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr;
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .stats-section {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stats-section:last-child {
+            border-bottom: none;
+        }
+
+        .stats-section-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--panel-header-bg);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 10px 20px;
+            font-size: 0.75rem;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .stats-row {
@@ -301,6 +330,18 @@
         .stats-val {
             color: var(--text-main);
             font-weight: 500;
+        }
+
+        .empty-stats-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            min-height: 100%;
         }
 
         .waveform-container {
@@ -531,50 +572,45 @@
                 </div>
             </div>
 
-            <div id="statsContainer" class="stats-grid" style="display:none;">
-                <div class="stats-row"
-                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    Input Signal</div>
-                <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span></div>
-
-                <div class="stats-row"
-                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">
-                    Performance</div>
-                <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span>
-                </div>
-                <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear" class="stats-val">-</span>
+            <div id="statsScrollContainer" class="stats-scroll-container">
+                <div id="emptyStatsPlaceholder" class="empty-stats-placeholder">
+                    Upload audio and process to view statistics
                 </div>
 
-                <div class="stats-row"
-                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">
-                    Output Signal</div>
-                <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Compression</span> <span id="compressionRatio" class="stats-val">-</span>
+                <div id="statsContainer" class="stats-grid" style="display:none;">
+                    <div class="stats-section">
+                        <div class="stats-section-header">Input Signal</div>
+                        <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span></div>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-section-header">Performance</div>
+                        <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear" class="stats-val">-</span></div>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-section-header">Output Signal</div>
+                        <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Compression</span> <span id="compressionRatio" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span></div>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-section-header">Audio Analysis</div>
+                        <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
+                    </div>
                 </div>
-                <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span></div>
-            </div>
-
-            <div id="audioAnalysisContainer" class="stats-grid"
-                style="display:none; border-top: 1px solid var(--border-color);">
-                <div class="stats-row"
-                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
-                    Audio Analysis</div>
-                <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
-                <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
-            </div>
-
-            <div class="info-box" style="justify-content:center; text-align:center; border-top:none; padding: 20px;"
-                id="emptyStatsPlaceholder">
-                Upload audio and process to view statistics
             </div>
         </div>
     </div>
