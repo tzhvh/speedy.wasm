@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +28,7 @@
             --btn-danger-hover: #fee2e2;
             --info-box-bg: #f9fafb;
             --spinner-color: #4b5563;
-            
+
             /* Waveform specific (consumed by waveform.js) */
             --wave-bg: #ffffff;
             --wave-grid: #e5e7eb;
@@ -108,6 +109,9 @@
         .panel {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            max-height: 55vh;
         }
 
         .panel-header {
@@ -157,7 +161,9 @@
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
         }
 
-        input[type="text"], input[type="file"], select {
+        input[type="text"],
+        input[type="file"],
+        select {
             width: 100%;
             padding: 8px;
             font-size: 0.875rem;
@@ -167,7 +173,8 @@
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
         }
 
-        input[type="text"]:focus, select:focus {
+        input[type="text"]:focus,
+        select:focus {
             outline: none;
             background: var(--input-focus-bg);
             border-color: var(--text-muted);
@@ -178,16 +185,18 @@
             width: 100%;
             background: transparent;
         }
-        
-        input[type="range"]:focus { outline: none; }
-        
+
+        input[type="range"]:focus {
+            outline: none;
+        }
+
         input[type="range"]::-webkit-slider-runnable-track {
             width: 100%;
             height: 2px;
             cursor: pointer;
             background: var(--border-color);
         }
-        
+
         input[type="range"]::-webkit-slider-thumb {
             height: 14px;
             width: 14px;
@@ -225,26 +234,35 @@
             color: var(--btn-primary-text);
             border-right: 1px solid var(--border-color);
         }
-        .btn-primary:hover:not(:disabled) { background-color: var(--btn-primary-hover); }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--btn-primary-hover);
+        }
 
         .btn-secondary {
             background-color: var(--btn-secondary-bg);
             color: var(--btn-secondary-text);
             border-right: 1px solid var(--border-color);
         }
-        .btn-secondary:hover:not(:disabled) { background-color: var(--btn-secondary-hover); }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--btn-secondary-hover);
+        }
 
         .btn-danger {
             background-color: var(--btn-danger-bg);
             color: var(--btn-danger-text);
         }
-        .btn-danger:hover:not(:disabled) { background-color: var(--btn-danger-hover); }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: var(--btn-danger-hover);
+        }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
+
         .btn.active {
             box-shadow: inset 0 0 0 2px var(--text-main);
         }
@@ -275,7 +293,10 @@
             font-size: 0.75rem;
             color: var(--text-muted);
         }
-        .stats-row:last-child { border-bottom: none; }
+
+        .stats-row:last-child {
+            border-bottom: none;
+        }
 
         .stats-val {
             color: var(--text-main);
@@ -296,19 +317,37 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
 
         /* New Styles for Log & Cassette Controls */
         .log-container {
             background-color: var(--info-box-bg);
             border-top: 1px solid var(--border-color);
-            height: 120px;
+            flex: 1;
+            min-height: 0;
             overflow-y: auto;
             padding: 8px 12px;
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
@@ -325,9 +364,21 @@
             border-bottom: 1px dotted var(--border-color);
             padding-bottom: 2px;
         }
-        .log-entry:last-child { border-bottom: none; }
-        .log-time { color: var(--text-main); opacity: 0.7; min-width: 50px; }
-        .log-msg { flex: 1; word-break: break-word; }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-main);
+            opacity: 0.7;
+            min-width: 50px;
+        }
+
+        .log-msg {
+            flex: 1;
+            word-break: break-word;
+        }
 
         .cassette-btn {
             background-color: var(--btn-secondary-bg);
@@ -340,20 +391,24 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        
+
         .cassette-btn.active {
-            background-color: var(--input-focus-bg); /* Slightly darker/different */
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
-            color: var(--wave-playhead); /* Highlight active */
+            background-color: var(--input-focus-bg);
+            /* Slightly darker/different */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+            color: var(--wave-playhead);
+            /* Highlight active */
             transform: translateY(1px);
-            border-top: 2px solid var(--border-color); /* simulate depth */
+            border-top: 2px solid var(--border-color);
+            /* simulate depth */
         }
+
         .cassette-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -361,10 +416,16 @@
             transform: none;
         }
 
-        .log-container::-webkit-scrollbar { width: 4px; }
-        .log-container::-webkit-scrollbar-thumb { background: var(--border-color); }
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+        }
     </style>
 </head>
+
 <body>
     <div class="app-container">
         <!-- Left Panel: Configuration -->
@@ -380,9 +441,10 @@
                 <label>Input Source</label>
                 <div style="display: flex;">
                     <input type="file" id="audioFile" accept="audio/*" style="display: none;">
-                    <input type="text" id="fileNameDisplay" readonly placeholder="NO FILE SELECTED" 
-                           style="flex: 1; border-right: none; cursor: default; color: var(--text-muted);">
-                    <button id="browseBtn" class="btn btn-secondary" style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color);">
+                    <input type="text" id="fileNameDisplay" readonly placeholder="NO FILE SELECTED"
+                        style="flex: 1; border-right: none; cursor: default; color: var(--text-muted);">
+                    <button id="browseBtn" class="btn btn-secondary"
+                        style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color);">
                         LOAD
                     </button>
                 </div>
@@ -413,12 +475,14 @@
             </div>
 
             <div style="border-top: 1px solid var(--border-color);">
-                <button id="processBtn" class="btn btn-primary" disabled style="height: 64px; width: 100%; font-size: 0.9rem; letter-spacing: 0.1em; font-weight: 700;">
-                    <div id="processingIndicator" class="spinner" style="display:none; margin-right:16px; border-width: 3px; width: 20px; height: 20px;"></div>
+                <button id="processBtn" class="btn btn-primary" disabled
+                    style="height: 64px; width: 100%; font-size: 0.9rem; letter-spacing: 0.1em; font-weight: 700;">
+                    <div id="processingIndicator" class="spinner"
+                        style="display:none; margin-right:16px; border-width: 3px; width: 20px; height: 20px;"></div>
                     INITIATE PROCESSING
                 </button>
             </div>
-            
+
             <div id="statusLog" class="log-container">
                 <div class="log-entry">
                     <span class="log-time">SYS</span>
@@ -437,35 +501,48 @@
             </div>
 
             <div id="statsContainer" class="stats-grid" style="display:none;">
-                <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Input Signal</div>
+                <div class="stats-row"
+                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    Input Signal</div>
                 <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span></div>
                 <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate" class="stats-val">-</span></div>
                 <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span></div>
                 <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span></div>
 
-                <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">Performance</div>
+                <div class="stats-row"
+                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">
+                    Performance</div>
                 <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span>
+                </div>
                 <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear" class="stats-val">-</span>
+                </div>
 
-                <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">Output Signal</div>
+                <div class="stats-row"
+                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">
+                    Output Signal</div>
                 <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span></div>
                 <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span></div>
-                <div class="stats-row"><span>Compression</span> <span id="compressionRatio" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Compression</span> <span id="compressionRatio" class="stats-val">-</span>
+                </div>
                 <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span></div>
             </div>
-            
-            <div id="audioAnalysisContainer" class="stats-grid" style="display:none; border-top: 1px solid var(--border-color);">
-                 <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Audio Analysis</div>
-                 <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
-                 <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
-                 <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
-                 <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
-                 <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
+
+            <div id="audioAnalysisContainer" class="stats-grid"
+                style="display:none; border-top: 1px solid var(--border-color);">
+                <div class="stats-row"
+                    style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                    Audio Analysis</div>
+                <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
+                <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
             </div>
 
-            <div class="info-box" style="justify-content:center; text-align:center; border-top:none; padding: 20px;" id="emptyStatsPlaceholder">
+            <div class="info-box" style="justify-content:center; text-align:center; border-top:none; padding: 20px;"
+                id="emptyStatsPlaceholder">
                 Upload audio and process to view statistics
             </div>
         </div>
@@ -480,29 +557,53 @@
                     <p>Time-Domain Visualization</p>
                 </div>
                 <div style="display:flex; gap:12px; align-items:center;">
-                    <button id="themeToggle" class="btn btn-secondary" style="padding: 6px 12px; border:1px solid var(--border-color); width:auto; font-size: 0.65rem;">THEME</button>
+                    <button id="themeToggle" class="btn btn-secondary"
+                        style="padding: 6px 12px; border:1px solid var(--border-color); width:auto; font-size: 0.65rem;">THEME</button>
                 </div>
             </div>
 
             <!-- Enhanced Playback Toolbar -->
-            <div style="padding: 0; border-bottom: 1px solid var(--border-color); background: var(--panel-header-bg); display: flex; align-items: stretch; height: 48px; flex-wrap: nowrap; overflow: hidden;">
+            <div
+                style="padding: 0; border-bottom: 1px solid var(--border-color); background: var(--panel-header-bg); display: flex; align-items: stretch; height: 48px; flex-wrap: nowrap; overflow: hidden;">
                 <!-- Main Playback Group -->
                 <div style="display: flex; border-right: 1px solid var(--border-color);">
-                    <button id="stopBtn" class="btn btn-secondary" style="width: 50px; border-right: 1px solid var(--border-color);" disabled title="Stop (Return to Start)">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+                    <button id="stopBtn" class="btn btn-secondary"
+                        style="width: 50px; border-right: 1px solid var(--border-color);" disabled
+                        title="Stop (Return to Start)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12" />
+                        </svg>
                     </button>
-                    
-                    <button id="seekBackBtn" class="btn btn-secondary" style="width: 45px; border-right: 1px solid var(--border-color);" disabled title="Seek Backward 5s">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+
+                    <button id="seekBackBtn" class="btn btn-secondary"
+                        style="width: 45px; border-right: 1px solid var(--border-color);" disabled
+                        title="Seek Backward 5s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                        </svg>
                     </button>
-                    
-                    <button id="playPauseBtn" class="btn btn-secondary" style="width: 80px; border-right: 1px solid var(--border-color); background: var(--btn-secondary-bg); font-weight: 700; color: var(--text-main); letter-spacing: 0.05em;" disabled title="Play/Pause">
-                        <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+
+                    <button id="playPauseBtn" class="btn btn-secondary"
+                        style="width: 80px; border-right: 1px solid var(--border-color); background: var(--btn-secondary-bg); font-weight: 700; color: var(--text-main); letter-spacing: 0.05em;"
+                        disabled title="Play/Pause">
+                        <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+                            style="display:none;">
+                            <rect x="6" y="4" width="4" height="16" />
+                            <rect x="14" y="4" width="4" height="16" />
+                        </svg>
                     </button>
-                    
-                    <button id="seekForwardBtn" class="btn btn-secondary" style="width: 45px; border-right: 1px solid var(--border-color);" disabled title="Seek Forward 5s">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg>
+
+                    <button id="seekForwardBtn" class="btn btn-secondary"
+                        style="width: 45px; border-right: 1px solid var(--border-color);" disabled
+                        title="Seek Forward 5s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+                        </svg>
                     </button>
                 </div>
 
@@ -517,23 +618,28 @@
                 </div>
 
                 <!-- Time Display -->
-                <div style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-main); border-right: 1px solid var(--border-color); min-width: 140px; background: var(--panel-bg);">
+                <div
+                    style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-main); border-right: 1px solid var(--border-color); min-width: 140px; background: var(--panel-bg);">
                     <span id="timeDisplay" style="letter-spacing: 0.05em;">0:00 / 0:00</span>
                 </div>
 
                 <!-- View Options -->
-                <div style="display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0; background: var(--panel-header-bg);">
+                <div
+                    style="display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0; background: var(--panel-header-bg);">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Scale</span>
-                        <select id="viewMode" style="width: auto; padding: 2px 6px; font-size: 0.7rem; height: 24px; border: 1px solid var(--border-color); background: var(--panel-bg); font-weight: 600;">
+                        <span
+                            style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Scale</span>
+                        <select id="viewMode"
+                            style="width: auto; padding: 2px 6px; font-size: 0.7rem; height: 24px; border: 1px solid var(--border-color); background: var(--panel-bg); font-weight: 600;">
                             <option value="fit">FIT</option>
                             <option value="realtime">RT</option>
                         </select>
                     </div>
-                    
+
                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
                         <input type="checkbox" id="inspectMode" style="width: 14px; height: 14px; cursor: pointer;">
-                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Inspect</span>
+                        <span
+                            style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Inspect</span>
                     </label>
                 </div>
             </div>
@@ -544,13 +650,18 @@
             </div>
 
             <!-- Footer Toolbar (Zoom & Selection) -->
-            <div style="padding: 0; border-top: 1px solid var(--border-color); display: flex; align-items: stretch; height: 40px; background: var(--panel-header-bg);">
-                <div style="display: flex; align-items: center; padding: 0 16px; border-right: 1px solid var(--border-color); flex: 1;">
-                    <label style="font-size: 0.6rem; font-family: 'SF Mono', monospace; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 12px;">Zoom</label>
-                    <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0" style="flex: 1; max-width: 300px;">
+            <div
+                style="padding: 0; border-top: 1px solid var(--border-color); display: flex; align-items: stretch; height: 40px; background: var(--panel-header-bg);">
+                <div
+                    style="display: flex; align-items: center; padding: 0 16px; border-right: 1px solid var(--border-color); flex: 1;">
+                    <label
+                        style="font-size: 0.6rem; font-family: 'SF Mono', monospace; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 12px;">Zoom</label>
+                    <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0"
+                        style="flex: 1; max-width: 300px;">
                 </div>
-                
-                <button id="zoomToSelectBtn" class="btn btn-secondary" style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;">
+
+                <button id="zoomToSelectBtn" class="btn btn-secondary"
+                    style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;">
                     ZOOM TO SELECTION
                 </button>
             </div>
@@ -568,7 +679,7 @@
         browseBtn.addEventListener('click', openFile);
         nameDisplay.addEventListener('click', openFile); // Clicking text box also opens
 
-        fileInput.addEventListener('change', function() {
+        fileInput.addEventListener('change', function () {
             if (this.files && this.files.length > 0) {
                 nameDisplay.value = this.files[0].name;
                 nameDisplay.style.color = 'var(--text-main)';
@@ -606,4 +717,5 @@
         document.getElementById('seekForwardBtn').addEventListener('click', () => seek(5));
     </script>
 </body>
+
 </html>
