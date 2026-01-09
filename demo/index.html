@@ -1,377 +1,466 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Speedy WASM Demo</title>
     <style>
         :root {
-            /* Default Dark Theme */
-            --bg-color: #111;
-            --panel-bg: #0a0a0a;
-            --text-main: #e0e0e0;
-            --text-dim: #777;
-            --border-color: #333;
-            --highlight: #fff;
-            --accent: #00ff00; /* Terminal green */
-            --grid-color: #222;
+            /* Core Theme Variables - Light Mode Default matching reference */
+            --bg-body: #fafafa;
+            --bg-grid-dot: #d1d5db;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --panel-bg: #ffffff;
+            --panel-header-bg: #fafafa;
+            --border-color: #d1d5db;
+            --input-bg: transparent;
+            --input-focus-bg: #f9fafb;
+            --btn-primary-bg: #1f2937;
+            --btn-primary-text: #ffffff;
+            --btn-primary-hover: #111827;
+            --btn-secondary-bg: #f3f4f6;
+            --btn-secondary-text: #374151;
+            --btn-secondary-hover: #e5e7eb;
+            --btn-danger-bg: #fef2f2;
+            --btn-danger-text: #dc2626;
+            --btn-danger-hover: #fee2e2;
+            --info-box-bg: #f9fafb;
+            --spinner-color: #4b5563;
             
-            /* Waveform specific */
-            --wave-bg: #000;
-            --wave-grid: #333;
-            --wave-text: #777;
-            --wave-origin: #777;
-            --wave-proc: #fff;
-            --wave-playhead: #0f0;
-            --wave-selection: rgba(255, 255, 255, 0.1);
-            --wave-selection-border: #fff;
+            /* Waveform specific (consumed by waveform.js) */
+            --wave-bg: #ffffff;
+            --wave-grid: #e5e7eb;
+            --wave-text: #6b7280;
+            --wave-origin: #9ca3af;
+            --wave-proc: #1f2937;
+            --wave-playhead: #4f46e5;
+            --wave-selection: rgba(79, 70, 229, 0.1);
+            --wave-selection-border: #4f46e5;
         }
 
-        [data-theme="light"] {
-            --bg-color: #f0f0f0;
-            --panel-bg: #ffffff;
-            --text-main: #222;
-            --text-dim: #666;
-            --border-color: #ccc;
-            --highlight: #000;
-            --accent: #0055ff; /* Engineering Blue */
-            --grid-color: #e0e0e0;
+        [data-theme="dark"] {
+            --bg-body: #050505;
+            --bg-grid-dot: #333333;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --panel-bg: #111111;
+            --panel-header-bg: #161616;
+            --border-color: #333333;
+            --input-bg: #111111;
+            --input-focus-bg: #1a1a1a;
+            --btn-primary-bg: #e5e7eb;
+            --btn-primary-text: #000000;
+            --btn-primary-hover: #ffffff;
+            --btn-secondary-bg: #1f2937;
+            --btn-secondary-text: #e5e7eb;
+            --btn-secondary-hover: #374151;
+            --btn-danger-bg: #3f1515;
+            --btn-danger-text: #f87171;
+            --btn-danger-hover: #501b1b;
+            --info-box-bg: #161616;
+            --spinner-color: #9ca3af;
 
             /* Waveform specific */
-            --wave-bg: #fff;
-            --wave-grid: #ccc;
-            --wave-text: #666;
-            --wave-origin: #aaa;
-            --wave-proc: #000;
-            --wave-playhead: #0055ff;
-            --wave-selection: rgba(0, 85, 255, 0.1);
-            --wave-selection-border: #0055ff;
+            --wave-bg: #111111;
+            --wave-grid: #333333;
+            --wave-text: #6b7280;
+            --wave-origin: #4b5563;
+            --wave-proc: #e5e7eb;
+            --wave-playhead: #00ff00;
+            --wave-selection: rgba(255, 255, 255, 0.1);
+            --wave-selection-border: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: "Menlo", "Consolas", "Monaco", "Courier New", monospace;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-body);
+            background-image: radial-gradient(var(--bg-grid-dot) 1px, transparent 1px);
             background-size: 20px 20px;
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding-bottom: 40px;
         }
-        .container {
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                padding: 16px;
+            }
+        }
+
+        .panel {
             background: var(--panel-bg);
-            padding: 2px; /* Inner border effect */
-            border: 1px solid var(--border-color);
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            position: relative;
-        }
-        #themeToggle {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            min-width: auto;
-            padding: 5px 10px;
-        }
-        .inner-container {
-            padding: 20px;
             border: 1px solid var(--border-color);
         }
-        h1 { 
-            margin-top: 0; 
-            color: var(--highlight); 
-            text-transform: uppercase; 
-            letter-spacing: 2px; 
-            font-size: 1.5em;
+
+        .panel-header {
+            padding: 16px 20px;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        p { color: var(--text-dim); font-size: 0.9em; }
-        
-        .control-group {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #000;
-            border: 1px solid var(--border-color);
-        }
-        
-        .control-row {
+            background: var(--panel-header-bg);
             display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            font-size: 0.9em;
+            justify-content: space-between;
+            align-items: flex-start;
         }
-        .control-row label {
-            width: 180px;
-            color: var(--text-dim);
+
+        .panel-header h1 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: 0.025em;
             text-transform: uppercase;
-            font-size: 0.8em;
-            letter-spacing: 1px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
         }
-        
-        /* Custom Range Slider */
-        input[type=range] {
+
+        .panel-header p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .form-group {
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 20px;
+        }
+
+        .form-group:last-of-type {
+            border-bottom: none;
+        }
+
+        .form-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        input[type="text"], input[type="file"], select {
+            width: 100%;
+            padding: 8px;
+            font-size: 0.875rem;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            background: var(--input-focus-bg);
+            border-color: var(--text-muted);
+        }
+
+        input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
-            margin: 0 10px;
         }
-        input[type=range]:focus { outline: none; }
-        input[type=range]::-webkit-slider-runnable-track {
+        
+        input[type="range"]:focus { outline: none; }
+        
+        input[type="range"]::-webkit-slider-runnable-track {
             width: 100%;
-            height: 1px;
+            height: 2px;
             cursor: pointer;
             background: var(--border-color);
         }
-        input[type=range]::-webkit-slider-thumb {
-            height: 10px;
-            width: 10px;
-            background: var(--highlight);
+        
+        input[type="range"]::-webkit-slider-thumb {
+            height: 14px;
+            width: 14px;
+            border: 1px solid var(--text-main);
+            background: var(--panel-bg);
             cursor: pointer;
             -webkit-appearance: none;
-            margin-top: -5px;
-            border-radius: 0; /* Square */
-            border: 1px solid #000;
+            margin-top: -6px;
         }
-        
-        /* Buttons */
-        button {
-            background-color: #000;
-            color: var(--text-dim);
-            border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 0;
+
+        .button-group {
+            display: flex;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: none;
             cursor: pointer;
-            font-family: inherit;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
             text-transform: uppercase;
-            font-size: 0.75em;
-            letter-spacing: 1px;
-            transition: all 0.2s;
-            min-width: 80px;
+            letter-spacing: 0.05em;
         }
-        button:hover:not(:disabled) { 
-            border-color: var(--highlight); 
-            color: var(--highlight);
+
+        .btn-primary {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            border-right: 1px solid var(--border-color);
         }
-        button:disabled { 
-            opacity: 0.3; 
-            cursor: not-allowed; 
-            border-style: dashed;
+        .btn-primary:hover:not(:disabled) { background-color: var(--btn-primary-hover); }
+
+        .btn-secondary {
+            background-color: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+            border-right: 1px solid var(--border-color);
         }
-        button.active { 
-            background-color: var(--text-dim); 
-            color: #000; 
-            border-color: var(--text-dim);
+        .btn-secondary:hover:not(:disabled) { background-color: var(--btn-secondary-hover); }
+
+        .btn-danger {
+            background-color: var(--btn-danger-bg);
+            color: var(--btn-danger-text);
         }
-        button.active:hover {
-            background-color: var(--highlight);
-            color: #000;
-            border-color: var(--highlight);
+        .btn-danger:hover:not(:disabled) { background-color: var(--btn-danger-hover); }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
+        .btn.active {
+            box-shadow: inset 0 0 0 2px var(--text-main);
+        }
+
+        .info-box {
+            background-color: var(--info-box-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
         .stats-grid {
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 1fr;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
         }
-        .stats-box {
-            background: #000; 
-            padding: 10px; 
-            border: 1px solid var(--border-color); 
-            font-size: 0.8em;
-        }
-        .stats-box strong {
-            display: block;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid var(--border-color);
-        }
+
         .stats-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
+            padding: 8px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
-        .stats-val { color: var(--highlight); }
+        .stats-row:last-child { border-bottom: none; }
 
-        #timeDisplay { 
-            font-family: inherit; 
-            min-width: 120px; 
-            text-align: center; 
-            color: var(--highlight);
-            background: #000;
-            padding: 5px;
-            border: 1px solid var(--border-color);
-            font-size: 0.9em;
-        }
-        
-        /* Waveform Controls */
-        #waveformControls {
-            margin-top: 20px; 
-            padding: 8px 15px; 
-            background: #000; 
-            color: var(--text-dim); 
-            border: 1px solid var(--border-color); 
-            border-bottom: none;
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-            font-size: 0.8em;
-            text-transform: uppercase;
-        }
-        select {
-            background: #000;
-            color: var(--highlight);
-            border: 1px solid var(--border-color);
-            border-radius: 0;
-            padding: 2px 5px;
-            font-family: inherit;
-            font-size: inherit;
+        .stats-val {
+            color: var(--text-main);
+            font-weight: 500;
         }
 
-        canvas {
-            width: 100%;
-            height: 200px;
-            background: #000;
-            border: 1px solid var(--border-color);
-            display: block;
+        .waveform-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
         }
-        
-        #status {
-            margin-top: 0;
-            padding: 5px 10px;
-            background: #000;
-            border: 1px solid var(--border-color);
-            border-top: none;
-            font-size: 0.8em;
-            color: var(--accent);
-            min-height: 1.2em;
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--spinner-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        
-        .loading {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            background: var(--highlight);
-            animation: blink 1s infinite;
-            vertical-align: middle;
-            margin-right: 10px;
-            display: none;
-        }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <button id="themeToggle">THEME</button>
-        <h1>Speedy WASM Demo</h1>
-        <p>Upload an audio file to process it with Speedy's non-linear speedup algorithm directly in your browser.</p>
+    <div class="app-container">
+        <!-- Left Panel: Configuration -->
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>Configuration</h1>
+                    <p>Speedy WASM Parameters</p>
+                </div>
+            </div>
 
-        <div class="control-group">
-            <input type="file" id="audioFile" accept="audio/*">
-        </div>
+            <div class="form-group">
+                <label for="audioFile">Audio Source</label>
+                <input type="file" id="audioFile" accept="audio/*" style="border:none; padding:0; background:transparent;">
+            </div>
 
-        <div class="control-group">
-            <div class="control-row">
-                <label for="speed">Speed Multiplier:</label>
+            <div class="form-group">
+                <label for="speed">
+                    Speed Multiplier
+                    <span id="speedVal">2.0x</span>
+                </label>
                 <input type="range" id="speed" min="0.5" max="3.0" step="0.1" value="2.0">
-                <span id="speedVal">2.0x</span>
             </div>
-            <div class="control-row">
-                <label for="nonlinear">Non-linear Factor:</label>
+
+            <div class="form-group">
+                <label for="nonlinear">
+                    Non-linear Factor
+                    <span id="nonlinearVal">1.0</span>
+                </label>
                 <input type="range" id="nonlinear" min="0.0" max="1.0" step="0.1" value="1.0">
-                <span id="nonlinearVal">1.0</span>
             </div>
-            <div class="control-row">
-                <label for="feedback">Feedback Strength:</label>
+
+            <div class="form-group">
+                <label for="feedback">
+                    Feedback Strength
+                    <span id="feedbackVal">0.1</span>
+                </label>
                 <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
-                <span id="feedbackVal">0.1</span>
             </div>
+
+            <div class="button-group">
+                <button id="processBtn" class="btn btn-primary" disabled>
+                    <div id="processingIndicator" class="spinner" style="display:none; margin-right:8px;"></div>
+                    Process
+                </button>
+                <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+            </div>
+            
+            <div id="status" class="info-box">Waiting for module to load...</div>
         </div>
 
-        <div class="control-group">
-            <button id="processBtn" disabled>Process & Play</button>
-            <button id="stopBtn" class="secondary" disabled>Stop</button>
-            <div id="processingIndicator" class="loading"></div>
-        </div>
-
-        <div id="statsContainer" style="display: none; margin-bottom: 20px;">
-            <h3>Processing Statistics</h3>
-            <div class="stats-grid">
-                <div class="stats-box">
-                    <strong>Input Signal</strong>
-                    <div class="stats-row"><span>Duration:</span> <span id="inDuration" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Sample Rate:</span> <span id="inSampleRate" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Channels:</span> <span id="inChannels" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Samples:</span> <span id="inSamples" class="stats-val">-</span></div>
-                </div>
-                <div class="stats-box">
-                    <strong>Performance & Config</strong>
-                    <div class="stats-row"><span>CPU Time:</span> <span id="procTime" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Real-time Factor:</span> <span id="rtFactor" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Speed Target:</span> <span id="paramSpeed" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Non-linear Factor:</span> <span id="paramNonlinear" class="stats-val">-</span></div>
-                </div>
-                <div class="stats-box">
-                    <strong>Output Signal</strong>
-                    <div class="stats-row"><span>Duration:</span> <span id="outDuration" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Samples:</span> <span id="outSamples" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Compression:</span> <span id="compressionRatio" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Est. WAV Size:</span> <span id="outSize" class="stats-val">-</span></div>
+        <!-- Right Panel: Statistics -->
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>Statistics</h1>
+                    <p>Signal Analysis & Metrics</p>
                 </div>
             </div>
-        </div>
 
-        <div id="audioAnalysisContainer" style="display: none; margin-bottom: 20px;">
-            <h3>Audio Analysis</h3>
-            <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
-                <div class="stats-box">
-                    <strong>Input Signal</strong>
-                    <div class="stats-row"><span>Peak Amplitude:</span> <span id="inPeak" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>RMS Level:</span> <span id="inRMS" class="stats-val">-</span></div>
-                </div>
-                <div class="stats-box">
-                    <strong>Output Signal</strong>
-                    <div class="stats-row"><span>Peak Amplitude:</span> <span id="outPeak" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>RMS Level:</span> <span id="outRMS" class="stats-val">-</span></div>
-                    <div class="stats-row"><span>Chunks Processed:</span> <span id="chunksProcessed" class="stats-val">-</span></div>
-                </div>
+            <div id="statsContainer" class="stats-grid" style="display:none;">
+                <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Input Signal</div>
+                <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span></div>
+
+                <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">Performance</div>
+                <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear" class="stats-val">-</span></div>
+
+                <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid var(--border-color);">Output Signal</div>
+                <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Compression</span> <span id="compressionRatio" class="stats-val">-</span></div>
+                <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span></div>
+            </div>
+            
+            <div id="audioAnalysisContainer" class="stats-grid" style="display:none; border-top: 1px solid var(--border-color);">
+                 <div class="stats-row" style="background:var(--panel-header-bg); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Audio Analysis</div>
+                 <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
+                 <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
+                 <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
+                 <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
+                 <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
+            </div>
+
+            <div class="info-box" style="justify-content:center; text-align:center; height:100%; border-top:none;" id="emptyStatsPlaceholder">
+                Upload audio and process to view statistics
             </div>
         </div>
+    </div>
 
-        <h3>Playback Controls</h3>
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-            <button id="playOriginalBtn" disabled>Play Original</button>
-            <button id="playProcessedBtn" disabled>Play Processed</button>
-            <button id="pauseBtn" class="secondary" disabled>Pause</button>
-            <span id="timeDisplay">0:00 / 0:00</span>
-        </div>
+    <!-- Waveform Section -->
+    <div class="waveform-container">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>Waveform</h1>
+                    <p>Time-Domain Visualization</p>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <span id="timeDisplay" style="font-family:'SF Mono', monospace; font-size:0.75rem; color:var(--text-main);">0:00 / 0:00</span>
+                    <button id="themeToggle" class="btn btn-secondary" style="padding: 6px 12px; border:1px solid var(--border-color); width:auto;">THEME</button>
+                </div>
+            </div>
 
-        <div id="waveformControls">
-            <div>
-                <label>View Mode: </label>
-                <select id="viewMode">
+            <!-- Toolbar -->
+            <div style="padding: 10px 20px; border-bottom: 1px solid var(--border-color); background: var(--panel-header-bg); display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                <div class="button-group" style="border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; margin:0;">
+                    <button id="playOriginalBtn" class="btn btn-secondary" style="padding: 8px 12px; width: auto; border-right:1px solid var(--border-color);" disabled>Original</button>
+                    <button id="playProcessedBtn" class="btn btn-secondary" style="padding: 8px 12px; width: auto; border-right:1px solid var(--border-color);" disabled>Processed</button>
+                    <button id="pauseBtn" class="btn btn-secondary" style="padding: 8px 12px; width: auto; border:none;" disabled>Pause</button>
+                </div>
+
+                <div style="height: 24px; width: 1px; background: var(--border-color); margin: 0 4px;"></div>
+
+                <select id="viewMode" style="width: auto; padding: 4px 8px; font-size: 0.75rem;">
                     <option value="fit">Fit to Window</option>
                     <option value="realtime">Realtime Scale</option>
                 </select>
+
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" id="inspectMode">
+                    <label for="inspectMode" style="font-size:0.75rem; font-family:'SF Mono', monospace; color:var(--text-muted); margin:0;">Inspect</label>
+                </div>
             </div>
-            <div>
-                 <label><input type="checkbox" id="inspectMode"> Inspect Active</label>
+
+            <!-- Canvas -->
+            <div style="position:relative; background:var(--wave-bg);">
+                <canvas id="waveformCanvas" style="width:100%; height: 300px; display:block;"></canvas>
             </div>
-            <div>
-                <button id="zoomToSelectBtn" class="secondary">Zoom to Selection</button>
-            </div>
-            <div style="flex: 1; display: flex; align-items: center;">
-                <label style="white-space: nowrap; margin-right: 10px;">Zoom:</label>
-                <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0">
+
+            <!-- Footer Controls -->
+            <div style="padding: 12px 20px; border-top: 1px solid var(--border-color); display:flex; align-items:center; gap:16px;">
+                <label style="font-size:0.75rem; font-family:'SF Mono', monospace; color:var(--text-muted); text-transform:uppercase;">Zoom</label>
+                <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0" style="flex:1;">
+                <button id="zoomToSelectBtn" class="btn btn-secondary" style="width:auto; border:1px solid var(--border-color); padding: 6px 12px;">Zoom Selection</button>
             </div>
         </div>
-        <canvas id="waveformCanvas" width="800" height="200"></canvas>
-        <div id="status">Waiting for module to load...</div>
     </div>
 
     <script type="module" src="demo.js"></script>
+    <script>
+        // Simple helper to hide placeholder when stats appear
+        const statsContainer = document.getElementById('statsContainer');
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.target.style.display !== 'none') {
+                    document.getElementById('emptyStatsPlaceholder').style.display = 'none';
+                }
+            });
+        });
+        observer.observe(statsContainer, { attributes: true, attributeFilter: ['style'] });
+    </script>
 </body>
 </html>

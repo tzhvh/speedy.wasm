@@ -2,8 +2,10 @@ export class WaveformViewer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.width = canvas.width;
-        this.height = canvas.height;
+        
+        // Dimensions (Logical)
+        this.width = 0;
+        this.height = 0;
 
         this.originalBuffer = null;
         this.processedBuffer = null;
@@ -37,6 +39,7 @@ export class WaveformViewer {
         this.updateThemeColors();
 
         this.bindEvents();
+        this.resize();
     }
     
     updateThemeColors() {
@@ -54,11 +57,35 @@ export class WaveformViewer {
     }
 
     bindEvents() {
+        // Resize Observer
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(this.canvas);
+
         // Mouse/Touch interaction
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         window.addEventListener('mousemove', this.handleMouseMove.bind(this));
         window.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+    }
+
+    resize() {
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set physical size
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        
+        // Normalize context to logical size
+        this.ctx.scale(dpr, dpr);
+        
+        // Store logical size for calculations
+        this.width = rect.width;
+        this.height = rect.height;
+        
+        this.draw();
     }
 
     setData(original, processed) {
