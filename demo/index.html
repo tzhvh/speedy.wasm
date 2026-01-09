@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speedy WASM Demo</title>
+    <style>
+        :root {
+            /* Default Dark Theme */
+            --bg-color: #111;
+            --panel-bg: #0a0a0a;
+            --text-main: #e0e0e0;
+            --text-dim: #777;
+            --border-color: #333;
+            --highlight: #fff;
+            --accent: #00ff00; /* Terminal green */
+            --grid-color: #222;
+            
+            /* Waveform specific */
+            --wave-bg: #000;
+            --wave-grid: #333;
+            --wave-text: #777;
+            --wave-origin: #777;
+            --wave-proc: #fff;
+            --wave-playhead: #0f0;
+            --wave-selection: rgba(255, 255, 255, 0.1);
+            --wave-selection-border: #fff;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f0f0;
+            --panel-bg: #ffffff;
+            --text-main: #222;
+            --text-dim: #666;
+            --border-color: #ccc;
+            --highlight: #000;
+            --accent: #0055ff; /* Engineering Blue */
+            --grid-color: #e0e0e0;
+
+            /* Waveform specific */
+            --wave-bg: #fff;
+            --wave-grid: #ccc;
+            --wave-text: #666;
+            --wave-origin: #aaa;
+            --wave-proc: #000;
+            --wave-playhead: #0055ff;
+            --wave-selection: rgba(0, 85, 255, 0.1);
+            --wave-selection-border: #0055ff;
+        }
+
+        body {
+            font-family: "Menlo", "Consolas", "Monaco", "Courier New", monospace;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .container {
+            background: var(--panel-bg);
+            padding: 2px; /* Inner border effect */
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        #themeToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            min-width: auto;
+            padding: 5px 10px;
+        }
+        .inner-container {
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+        h1 { 
+            margin-top: 0; 
+            color: var(--highlight); 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            font-size: 1.5em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        p { color: var(--text-dim); font-size: 0.9em; }
+        
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #000;
+            border: 1px solid var(--border-color);
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .control-row label {
+            width: 180px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-size: 0.8em;
+            letter-spacing: 1px;
+        }
+        
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin: 0 10px;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 1px;
+            cursor: pointer;
+            background: var(--border-color);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 10px;
+            width: 10px;
+            background: var(--highlight);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            border-radius: 0; /* Square */
+            border: 1px solid #000;
+        }
+        
+        /* Buttons */
+        button {
+            background-color: #000;
+            color: var(--text-dim);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 0;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 0.75em;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            min-width: 80px;
+        }
+        button:hover:not(:disabled) { 
+            border-color: var(--highlight); 
+            color: var(--highlight);
+        }
+        button:disabled { 
+            opacity: 0.3; 
+            cursor: not-allowed; 
+            border-style: dashed;
+        }
+        button.active { 
+            background-color: var(--text-dim); 
+            color: #000; 
+            border-color: var(--text-dim);
+        }
+        button.active:hover {
+            background-color: var(--highlight);
+            color: #000;
+            border-color: var(--highlight);
+        }
+        
+        .stats-grid {
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 10px;
+        }
+        .stats-box {
+            background: #000; 
+            padding: 10px; 
+            border: 1px solid var(--border-color); 
+            font-size: 0.8em;
+        }
+        .stats-box strong {
+            display: block;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .stats-val { color: var(--highlight); }
+
+        #timeDisplay { 
+            font-family: inherit; 
+            min-width: 120px; 
+            text-align: center; 
+            color: var(--highlight);
+            background: #000;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9em;
+        }
+        
+        /* Waveform Controls */
+        #waveformControls {
+            margin-top: 20px; 
+            padding: 8px 15px; 
+            background: #000; 
+            color: var(--text-dim); 
+            border: 1px solid var(--border-color); 
+            border-bottom: none;
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            font-size: 0.8em;
+            text-transform: uppercase;
+        }
+        select {
+            background: #000;
+            color: var(--highlight);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 2px 5px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            display: block;
+        }
+        
+        #status {
+            margin-top: 0;
+            padding: 5px 10px;
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            font-size: 0.8em;
+            color: var(--accent);
+            min-height: 1.2em;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: var(--highlight);
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            margin-right: 10px;
+            display: none;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="themeToggle">THEME</button>
+        <h1>Speedy WASM Demo</h1>
+        <p>Upload an audio file to process it with Speedy's non-linear speedup algorithm directly in your browser.</p>
+
+        <div class="control-group">
+            <input type="file" id="audioFile" accept="audio/*">
+        </div>
+
+        <div class="control-group">
+            <div class="control-row">
+                <label for="speed">Speed Multiplier:</label>
+                <input type="range" id="speed" min="0.5" max="3.0" step="0.1" value="2.0">
+                <span id="speedVal">2.0x</span>
+            </div>
+            <div class="control-row">
+                <label for="nonlinear">Non-linear Factor:</label>
+                <input type="range" id="nonlinear" min="0.0" max="1.0" step="0.1" value="1.0">
+                <span id="nonlinearVal">1.0</span>
+            </div>
+            <div class="control-row">
+                <label for="feedback">Feedback Strength:</label>
+                <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
+                <span id="feedbackVal">0.1</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <button id="processBtn" disabled>Process & Play</button>
+            <button id="stopBtn" class="secondary" disabled>Stop</button>
+            <div id="processingIndicator" class="loading"></div>
+        </div>
+
+        <div id="statsContainer" style="display: none; margin-bottom: 20px;">
+            <h3>Processing Statistics</h3>
+            <div class="stats-grid">
+                <div class="stats-box">
+                    <strong>Input Signal</strong>
+                    <div class="stats-row"><span>Duration:</span> <span id="inDuration" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Sample Rate:</span> <span id="inSampleRate" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Channels:</span> <span id="inChannels" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Samples:</span> <span id="inSamples" class="stats-val">-</span></div>
+                </div>
+                <div class="stats-box">
+                    <strong>Performance & Config</strong>
+                    <div class="stats-row"><span>CPU Time:</span> <span id="procTime" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Real-time Factor:</span> <span id="rtFactor" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Speed Target:</span> <span id="paramSpeed" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Non-linear Factor:</span> <span id="paramNonlinear" class="stats-val">-</span></div>
+                </div>
+                <div class="stats-box">
+                    <strong>Output Signal</strong>
+                    <div class="stats-row"><span>Duration:</span> <span id="outDuration" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Samples:</span> <span id="outSamples" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Compression:</span> <span id="compressionRatio" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Est. WAV Size:</span> <span id="outSize" class="stats-val">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="audioAnalysisContainer" style="display: none; margin-bottom: 20px;">
+            <h3>Audio Analysis</h3>
+            <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="stats-box">
+                    <strong>Input Signal</strong>
+                    <div class="stats-row"><span>Peak Amplitude:</span> <span id="inPeak" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>RMS Level:</span> <span id="inRMS" class="stats-val">-</span></div>
+                </div>
+                <div class="stats-box">
+                    <strong>Output Signal</strong>
+                    <div class="stats-row"><span>Peak Amplitude:</span> <span id="outPeak" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>RMS Level:</span> <span id="outRMS" class="stats-val">-</span></div>
+                    <div class="stats-row"><span>Chunks Processed:</span> <span id="chunksProcessed" class="stats-val">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <h3>Playback Controls</h3>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <button id="playOriginalBtn" disabled>Play Original</button>
+            <button id="playProcessedBtn" disabled>Play Processed</button>
+            <button id="pauseBtn" class="secondary" disabled>Pause</button>
+            <span id="timeDisplay">0:00 / 0:00</span>
+        </div>
+
+        <div id="waveformControls">
+            <div>
+                <label>View Mode: </label>
+                <select id="viewMode">
+                    <option value="fit">Fit to Window</option>
+                    <option value="realtime">Realtime Scale</option>
+                </select>
+            </div>
+            <div>
+                 <label><input type="checkbox" id="inspectMode"> Inspect Active</label>
+            </div>
+            <div>
+                <button id="zoomToSelectBtn" class="secondary">Zoom to Selection</button>
+            </div>
+            <div style="flex: 1; display: flex; align-items: center;">
+                <label style="white-space: nowrap; margin-right: 10px;">Zoom:</label>
+                <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0">
+            </div>
+        </div>
+        <canvas id="waveformCanvas" width="800" height="200"></canvas>
+        <div id="status">Waiting for module to load...</div>
+    </div>
+
+    <script type="module" src="demo.js"></script>
+</body>
+</html>
