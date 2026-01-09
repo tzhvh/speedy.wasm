@@ -34,6 +34,7 @@ export class WaveformViewer {
         this.onSeek = null; // Callback
         this.onZoom = null; // Callback when zoom changes (for UI sync)
         this.onModeChange = null; // Callback when mode changes
+        this.onSelectionChange = null; // Callback when selection changes (passes selection or null)
         
         this.colors = {};
         this.updateThemeColors();
@@ -166,6 +167,24 @@ export class WaveformViewer {
         this.draw();
     }
 
+    clearSelection() {
+        if (this.selection) {
+            this.selection = null;
+            if (this.onSelectionChange) {
+                this.onSelectionChange(null);
+            }
+            this.draw();
+        }
+    }
+
+    hasSelection() {
+        return this.selection !== null;
+    }
+
+    getSelection() {
+        return this.selection ? {...this.selection} : null;
+    }
+
     getMaxDuration() {
         let max = 0;
         if (this.originalBuffer) max = Math.max(max, this.originalBuffer.duration);
@@ -206,7 +225,7 @@ export class WaveformViewer {
     handleMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        
+
         // Hit test playhead
         const playheadX = this.timeToX(this.playbackState.currentTime);
         if (Math.abs(x - playheadX) < 10) {
@@ -216,7 +235,13 @@ export class WaveformViewer {
             this.isDragging = true;
             this.isDraggingPlayhead = false;
             this.dragStartX = x;
-            this.selection = null;
+            // Clear existing selection when starting new drag
+            if (this.selection) {
+                this.selection = null;
+                if (this.onSelectionChange) {
+                    this.onSelectionChange(null);
+                }
+            }
         }
     }
 
@@ -228,7 +253,13 @@ export class WaveformViewer {
             // Update local current time (visual scrubbing)
             const t = this.xToTime(x);
             const maxDur = this.getMaxDuration();
-            this.playbackState.currentTime = Math.max(0, Math.min(t, maxDur));
+
+            // Clamp to selection bounds if active
+            if (this.selection) {
+                this.playbackState.currentTime = Math.max(this.selection.start, Math.min(t, this.selection.end));
+            } else {
+                this.playbackState.currentTime = Math.max(0, Math.min(t, maxDur));
+            }
             this.draw();
             return;
         }
@@ -265,13 +296,22 @@ export class WaveformViewer {
         this.isDragging = false;
 
         if (this.selection) {
-            // Selection created
+            // Selection created - notify callback
+            if (this.onSelectionChange) {
+                this.onSelectionChange({...this.selection});
+            }
         } else {
-            // Click = Seek
+            // Click = Seek (also clears any existing selection)
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const time = this.xToTime(x);
             if (this.onSeek) this.onSeek(time);
+            // Clear selection on click
+            if (this.selection && this.onSelectionChange) {
+                this.selection = null;
+                this.onSelectionChange(null);
+                this.draw();
+            }
         }
     }
 
@@ -315,26 +355,30 @@ export class WaveformViewer {
         if (!this.selection) return;
         const duration = this.selection.end - this.selection.start;
         if (duration <= 0) return;
-        
+
         // Switch to realtime if not already
         if (this.scaleMode !== 'realtime') {
             this.scaleMode = 'realtime';
             if (this.onModeChange) this.onModeChange('realtime');
         }
-        
+
         // Calculate needed pixelsPerSecond
         // We want duration to fit in width
         this.pixelsPerSecond = this.width / duration;
-        
+
         // Update Zoom Level for UI
-        this.zoomLevel = this.pixelsPerSecond / 50; 
-        
+        this.zoomLevel = this.pixelsPerSecond / 50;
+
         // Scroll to start
         this.scrollX = this.selection.start * this.pixelsPerSecond;
-        
+
+        // Clear selection and notify callback (this resets playback bounds)
         this.selection = null;
+        if (this.onSelectionChange) {
+            this.onSelectionChange(null);
+        }
         this.draw();
-        
+
         if (this.onZoom) this.onZoom(this.zoomLevel);
         return 'realtime'; // Return mode to update UI selector
     }

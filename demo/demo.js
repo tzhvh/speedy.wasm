@@ -19,8 +19,12 @@ class SpeedyDemo {
             pauseTime: 0,
             currentBuffer: null,
             animationId: null,
-            duration: 0
+            duration: 0,
+            selectionDuration: 0 // Duration when in selection mode
         };
+
+        // Selection state
+        this.activeSelection = null; // {start: time, end: time} or null
         
         // UI Elements
         this.statusLogEl = document.getElementById('statusLog');
@@ -116,12 +120,41 @@ class SpeedyDemo {
         this.waveformViewer.onSeek = (time) => {
              const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
              if (!buffer) return;
-             
-             // Clamp time
-             time = Math.max(0, Math.min(time, buffer.duration));
-             
+
+             // Clamp time to selection bounds if active
+             if (this.activeSelection) {
+                 time = Math.max(this.activeSelection.start, Math.min(time, this.activeSelection.end));
+             } else {
+                 time = Math.max(0, Math.min(time, buffer.duration));
+             }
+
              this.stopPlayback(false); // Don't reset view completely
              this.playBuffer(buffer, this.selectedBufferType, time);
+        };
+
+        this.waveformViewer.onSelectionChange = (selection) => {
+            this.activeSelection = selection;
+            this.updateSelectionUI();
+
+            // If currently playing, restart to apply/remove selection bounds
+            if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
+                const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+                if (buffer) {
+                    const currentTime = this.playbackState.currentTime;
+                    let seekTime = currentTime;
+
+                    if (selection) {
+                        // Selection created: if current time is outside, seek to selection start
+                        if (currentTime > selection.end) {
+                            seekTime = selection.start;
+                        }
+                    }
+                    // If selection cleared, just continue from current time
+
+                    this.stopPlayback(false);
+                    this.playBuffer(buffer, this.selectedBufferType, seekTime);
+                }
+            }
         };
         
         this.waveformViewer.onZoom = (level) => {
@@ -218,22 +251,71 @@ class SpeedyDemo {
         // Toggle Buttons State (Cassette Logic)
         playOriginalBtn.disabled = !this.originalBuffer;
         playProcessedBtn.disabled = !this.processedBuffer;
-        
+
         playOriginalBtn.classList.toggle('active', this.selectedBufferType === 'original');
         playProcessedBtn.classList.toggle('active', this.selectedBufferType === 'processed');
 
         // Play/Pause Button
-        const hasActiveBuffer = (this.selectedBufferType === 'original' && this.originalBuffer) || 
+        const hasActiveBuffer = (this.selectedBufferType === 'original' && this.originalBuffer) ||
                               (this.selectedBufferType === 'processed' && this.processedBuffer);
-        
+
         playPauseBtn.disabled = !hasActiveBuffer;
-        
+
         const isPlaying = this.playbackState.isPlaying && !this.playbackState.isPaused;
         playIcon.style.display = isPlaying ? 'none' : 'block';
         pauseIcon.style.display = isPlaying ? 'block' : 'none';
-        
+
         // Optional: Highlight play/pause if playing
         playPauseBtn.classList.toggle('active', isPlaying);
+    }
+
+    updateSelectionUI() {
+        const indicator = document.getElementById('selectionIndicator');
+        const clearBtn = document.getElementById('clearSelectionBtn');
+        const timeDisplay = document.getElementById('timeDisplay');
+
+        if (this.activeSelection) {
+            // Show selection indicator
+            if (indicator) {
+                indicator.style.display = 'flex';
+                const startStr = this.formatTime(this.activeSelection.start);
+                const endStr = this.formatTime(this.activeSelection.end);
+                const durStr = this.formatTime(this.activeSelection.end - this.activeSelection.start);
+                indicator.querySelector('.selection-range').textContent = `${startStr} - ${endStr} (${durStr})`;
+            }
+            if (clearBtn) {
+                clearBtn.disabled = false;
+            }
+            timeDisplay.classList.add('selection-active');
+        } else {
+            // Hide selection indicator
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+            if (clearBtn) {
+                clearBtn.disabled = true;
+            }
+            timeDisplay.classList.remove('selection-active');
+        }
+    }
+
+    clearSelection() {
+        this.waveformViewer.clearSelection();
+        const wasPlaying = this.playbackState.isPlaying && !this.playbackState.isPaused;
+        const currentTime = this.playbackState.currentTime;
+
+        this.activeSelection = null;
+        this.updateSelectionUI();
+        this.log('Selection cleared');
+
+        // If playback was active, restart without selection bounds
+        if (wasPlaying) {
+            const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+            if (buffer) {
+                this.stopPlayback(false);
+                this.playBuffer(buffer, this.selectedBufferType, currentTime);
+            }
+        }
     }
 
     pausePlayback() {
@@ -271,14 +353,28 @@ class SpeedyDemo {
         this.sourceNode.buffer = buffer;
         this.sourceNode.connect(this.audioContext.destination);
 
+        // Calculate effective duration and offset based on selection
+        let effectiveOffset = offset;
+        let effectiveDuration = buffer.duration;
+
+        if (this.activeSelection) {
+            // Clamp offset to selection bounds
+            effectiveOffset = Math.max(this.activeSelection.start, Math.min(offset, this.activeSelection.end));
+            // Store selection duration for animation loop
+            this.playbackState.selectionDuration = this.activeSelection.end - this.activeSelection.start;
+            effectiveDuration = this.playbackState.selectionDuration;
+        } else {
+            this.playbackState.selectionDuration = 0;
+        }
+
         this.playbackState.isPlaying = true;
         this.playbackState.isPaused = false;
-        this.playbackState.startTime = this.audioContext.currentTime - offset;
-        this.playbackState.duration = buffer.duration;
+        this.playbackState.startTime = this.audioContext.currentTime - effectiveOffset;
+        this.playbackState.duration = buffer.duration; // Full buffer duration
         this.playbackState.currentBuffer = bufferType;
         this.selectedBufferType = bufferType; // Ensure sync
 
-        this.sourceNode.start(0, offset);
+        this.sourceNode.start(0, effectiveOffset);
         this.startPlaybackAnimation();
         this.updateButtonStates();
 
@@ -289,7 +385,7 @@ class SpeedyDemo {
                 cancelAnimationFrame(this.playbackState.animationId);
                 this.updateButtonStates();
                 this.log('Playback finished');
-                
+
                 this.waveformViewer.setPlaybackState(false, 0, this.selectedBufferType);
             }
         };
@@ -542,14 +638,25 @@ class SpeedyDemo {
             const elapsed = this.audioContext.currentTime - this.playbackState.startTime;
             const duration = this.playbackState.duration;
 
-            if (elapsed >= duration) {
-                this.playbackState.currentTime = 0;
-                this.waveformViewer.setPlaybackState(false, 0, this.selectedBufferType);
+            // Determine effective end time based on selection
+            let effectiveEndTime = duration;
+            if (this.activeSelection) {
+                effectiveEndTime = this.activeSelection.end;
+            }
+
+            if (elapsed >= effectiveEndTime) {
+                // Stop at selection end or buffer end
+                this.playbackState.currentTime = this.activeSelection ? this.activeSelection.start : 0;
+                this.waveformViewer.setPlaybackState(false, this.playbackState.currentTime, this.selectedBufferType);
+                this.stopPlayback(false); // Don't reset view
                 return;
             }
 
             this.playbackState.currentTime = elapsed;
-            const timeStr = this.formatTime(elapsed) + ' / ' + this.formatTime(duration);
+            // Update time display to show current time and effective end
+            const displayDuration = this.activeSelection ? this.playbackState.selectionDuration : duration;
+            const displayStart = this.activeSelection ? this.activeSelection.start : 0;
+            const timeStr = this.formatTime(elapsed) + ' / ' + this.formatTime(displayStart + displayDuration);
             document.getElementById('timeDisplay').textContent = timeStr;
 
             this.waveformViewer.setPlaybackState(true, elapsed, this.selectedBufferType);
@@ -567,3 +674,6 @@ class SpeedyDemo {
 
 const demo = new SpeedyDemo();
 demo.initialize();
+
+// Expose demo globally for inline script access
+window.demo = demo;

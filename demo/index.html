@@ -423,6 +423,37 @@
         .log-container::-webkit-scrollbar-thumb {
             background: var(--border-color);
         }
+
+        /* Selection Mode Styles */
+        #timeDisplay.selection-active {
+            color: var(--wave-playhead);
+        }
+
+        .selection-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 0 16px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.7rem;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .selection-indicator.active {
+            display: flex;
+        }
+
+        .selection-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .selection-range {
+            color: var(--wave-playhead);
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -617,6 +648,12 @@
                     </button>
                 </div>
 
+                <!-- Selection Indicator -->
+                <div id="selectionIndicator" class="selection-indicator">
+                    <span class="selection-label">SEL:</span>
+                    <span class="selection-range">0:00 - 0:00 (0:00)</span>
+                </div>
+
                 <!-- Time Display -->
                 <div
                     style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-main); border-right: 1px solid var(--border-color); min-width: 140px; background: var(--panel-bg);">
@@ -659,6 +696,11 @@
                     <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0"
                         style="flex: 1; max-width: 300px;">
                 </div>
+
+                <button id="clearSelectionBtn" class="btn btn-secondary"
+                    style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;" disabled>
+                    CLEAR SEL
+                </button>
 
                 <button id="zoomToSelectBtn" class="btn btn-secondary"
                     style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;">
@@ -715,6 +757,21 @@
 
         document.getElementById('seekBackBtn').addEventListener('click', () => seek(-5));
         document.getElementById('seekForwardBtn').addEventListener('click', () => seek(5));
+
+        // Clear Selection Button
+        document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+            if (demo.clearSelection) {
+                demo.clearSelection();
+            }
+        });
+
+        // Keyboard shortcut: Escape to clear selection
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && demo.activeSelection) {
+                e.preventDefault();
+                demo.clearSelection();
+            }
+        });
     </script>
 </body>
 
