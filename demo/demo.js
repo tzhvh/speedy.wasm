@@ -5,6 +5,7 @@ class SpeedyDemo {
     constructor() {
         this.audioContext = null;
         this.sourceNode = null;
+        this.sourceIdCounter = 0;
         this.originalBuffer = null;
         this.processedBuffer = null;
         this.isProcessing = false;
@@ -378,9 +379,15 @@ class SpeedyDemo {
     }
 
     playBuffer(buffer, bufferType, offset = 0) {
+        // Capture source ID before creating new node to guard against stale callbacks
+        const currentSourceId = ++this.sourceIdCounter;
+
         this.sourceNode = this.audioContext.createBufferSource();
         this.sourceNode.buffer = buffer;
         this.sourceNode.connect(this.audioContext.destination);
+
+        // Always reset selection duration first to clear any stale state
+        this.playbackState.selectionDuration = 0;
 
         // Calculate effective duration and offset based on selection
         let effectiveOffset = offset;
@@ -392,8 +399,6 @@ class SpeedyDemo {
             // Store selection duration for animation loop
             this.playbackState.selectionDuration = this.activeSelection.end - this.activeSelection.start;
             effectiveDuration = this.playbackState.selectionDuration;
-        } else {
-            this.playbackState.selectionDuration = 0;
         }
 
         this.playbackState.isPlaying = true;
@@ -408,6 +413,9 @@ class SpeedyDemo {
         this.updateButtonStates();
 
         this.sourceNode.onended = () => {
+            // Only run if this is still the current source (prevents stale callbacks from killing new playback)
+            if (currentSourceId !== this.sourceIdCounter) return;
+
             if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
                 this.playbackState.isPlaying = false;
                 this.playbackState.currentBuffer = null;
