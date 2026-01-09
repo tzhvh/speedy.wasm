@@ -317,8 +317,15 @@
             </div>
 
             <div class="form-group">
-                <label for="audioFile">Audio Source</label>
-                <input type="file" id="audioFile" accept="audio/*" style="border:none; padding:0; background:transparent;">
+                <label>Input Source</label>
+                <div style="display: flex;">
+                    <input type="file" id="audioFile" accept="audio/*" style="display: none;">
+                    <input type="text" id="fileNameDisplay" readonly placeholder="NO FILE SELECTED" 
+                           style="flex: 1; border-right: none; cursor: default; color: var(--text-muted);">
+                    <button id="browseBtn" class="btn btn-secondary" style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color);">
+                        LOAD
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -337,7 +344,7 @@
                 <input type="range" id="nonlinear" min="0.0" max="1.0" step="0.1" value="1.0">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="border-bottom: none;">
                 <label for="feedback">
                     Feedback Strength
                     <span id="feedbackVal">0.1</span>
@@ -345,15 +352,15 @@
                 <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
             </div>
 
-            <div class="button-group">
-                <button id="processBtn" class="btn btn-primary" disabled>
-                    <div id="processingIndicator" class="spinner" style="display:none; margin-right:8px;"></div>
-                    Process
+            <div style="display: grid; grid-template-columns: 3fr 1fr; border-top: 1px solid var(--border-color);">
+                <button id="processBtn" class="btn btn-primary" disabled style="height: 50px; font-size: 0.875rem; border-right: 1px solid var(--border-color);">
+                    <div id="processingIndicator" class="spinner" style="display:none; margin-right:12px; border-width: 3px;"></div>
+                    INITIATE PROCESSING
                 </button>
-                <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+                <button id="stopBtn" class="btn btn-danger" disabled style="height: 50px;">STOP</button>
             </div>
             
-            <div id="status" class="info-box">Waiting for module to load...</div>
+            <div id="status" class="info-box" style="border-top: 1px solid var(--border-color);">Waiting for module to load...</div>
         </div>
 
         <!-- Right Panel: Statistics -->
@@ -451,6 +458,24 @@
 
     <script type="module" src="demo.js"></script>
     <script>
+        // File Picker UI Logic
+        const browseBtn = document.getElementById('browseBtn');
+        const fileInput = document.getElementById('audioFile');
+        const nameDisplay = document.getElementById('fileNameDisplay');
+
+        const openFile = () => fileInput.click();
+        browseBtn.addEventListener('click', openFile);
+        nameDisplay.addEventListener('click', openFile); // Clicking text box also opens
+
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                nameDisplay.value = this.files[0].name;
+                nameDisplay.style.color = 'var(--text-main)';
+            } else {
+                nameDisplay.value = '';
+            }
+        });
+
         // Simple helper to hide placeholder when stats appear
         const statsContainer = document.getElementById('statsContainer');
         const observer = new MutationObserver((mutations) => {
