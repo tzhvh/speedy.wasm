@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speedy WASM Demo</title>
+    <style>
+        :root {
+            /* Core Theme Variables - Light Mode Default matching reference */
+            --bg-body: #fafafa;
+            --bg-grid-dot: #d1d5db;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --panel-bg: #ffffff;
+            --panel-header-bg: #fafafa;
+            --border-color: #d1d5db;
+            --input-bg: transparent;
+            --input-focus-bg: #f9fafb;
+            --btn-primary-bg: #1f2937;
+            --btn-primary-text: #ffffff;
+            --btn-primary-hover: #111827;
+            --btn-secondary-bg: #f3f4f6;
+            --btn-secondary-text: #374151;
+            --btn-secondary-hover: #e5e7eb;
+            --btn-danger-bg: #fef2f2;
+            --btn-danger-text: #dc2626;
+            --btn-danger-hover: #fee2e2;
+            --info-box-bg: #f9fafb;
+            --spinner-color: #4b5563;
+
+            /* Waveform specific (consumed by waveform.js) */
+            --wave-bg: #ffffff;
+            --wave-grid: #e5e7eb;
+            --wave-text: #6b7280;
+            --wave-origin: #9ca3af;
+            --wave-proc: #1f2937;
+            --wave-speed: #8b5cf6;
+            --wave-linear: #f59e0b;
+            --wave-bifurcated: rgba(249, 115, 22, 0.5);
+            --wave-playhead: #4f46e5;
+            --wave-selection: rgba(79, 70, 229, 0.1);
+            --wave-selection-border: #4f46e5;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #050505;
+            --bg-grid-dot: #333333;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
+            --panel-bg: #111111;
+            --panel-header-bg: #161616;
+            --border-color: #333333;
+            --input-bg: #111111;
+            --input-focus-bg: #1a1a1a;
+            --btn-primary-bg: #e5e7eb;
+            --btn-primary-text: #000000;
+            --btn-primary-hover: #ffffff;
+            --btn-secondary-bg: #1f2937;
+            --btn-secondary-text: #e5e7eb;
+            --btn-secondary-hover: #374151;
+            --btn-danger-bg: #3f1515;
+            --btn-danger-text: #f87171;
+            --btn-danger-hover: #501b1b;
+            --info-box-bg: #161616;
+            --spinner-color: #9ca3af;
+
+            /* Waveform specific */
+            --wave-bg: #111111;
+            --wave-grid: #333333;
+            --wave-text: #6b7280;
+            --wave-origin: #4b5563;
+            --wave-proc: #e5e7eb;
+            --wave-speed: #a78bfa;
+            --wave-linear: #fbbf24;
+            --wave-bifurcated: rgba(251, 146, 60, 0.5);
+            --wave-playhead: #00ff00;
+            --wave-selection: rgba(255, 255, 255, 0.1);
+            --wave-selection-border: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-body);
+            background-image: radial-gradient(var(--bg-grid-dot) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                padding: 16px;
+            }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            max-height: 55vh;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--panel-header-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .panel-header h1 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: 0.025em;
+            text-transform: uppercase;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .panel-header p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .form-group {
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 20px;
+        }
+
+        .form-group:last-of-type {
+            border-bottom: none;
+        }
+
+        .form-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 8px;
+            font-size: 0.875rem;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            background: var(--input-focus-bg);
+            border-color: var(--text-muted);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: var(--border-color);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            height: 14px;
+            width: 14px;
+            border: 1px solid var(--text-main);
+            background: var(--panel-bg);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+        }
+
+        .button-group {
+            display: flex;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-primary {
+            background-color: var(--btn-primary-bg);
+            color: var(--btn-primary-text);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--btn-primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--btn-secondary-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--btn-danger-bg);
+            color: var(--btn-danger-text);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: var(--btn-danger-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn.active {
+            box-shadow: inset 0 0 0 2px var(--text-main);
+        }
+
+        .btn.ready {
+            box-shadow: 0 2px 0 0px var(--wave-playhead),
+                inset 0 2px 0 0px var(--wave-playhead);
+            /* animation: pulse-ready 2s ease-in-out infinite; */
+        }
+
+        @keyframes pulse-ready {
+
+            0%,
+            100% {
+                box-shadow: 0 20px 0 0 var(--wave-playhead), inset 0 20px 0 0 var(--wave-playhead);
+            }
+
+            50% {
+                box-shadow: 0 20px 0 0 var(--wave-playhead), inset 0 20px 0 0 var(--wave-playhead);
+            }
+        }
+
+        .info-box {
+            background-color: var(--info-box-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
+        .stats-scroll-container {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .stats-section {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stats-section:last-child {
+            border-bottom: none;
+        }
+
+        .stats-section-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--panel-header-bg);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 10px 20px;
+            font-size: 0.75rem;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .stats-row:last-child {
+            border-bottom: none;
+        }
+
+        .stats-val {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .empty-stats-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            min-height: 100%;
+        }
+
+        .waveform-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 32px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--spinner-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* New Styles for Log & Cassette Controls */
+        .log-container {
+            background-color: var(--info-box-bg);
+            border-top: 1px solid var(--border-color);
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 8px 12px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px dotted var(--border-color);
+            padding-bottom: 2px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-main);
+            opacity: 0.7;
+            min-width: 50px;
+        }
+
+        .log-msg {
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .cassette-btn {
+            background-color: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+            border: none;
+            border-right: 1px solid var(--border-color);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .cassette-btn.active {
+            background-color: var(--input-focus-bg);
+            /* Slightly darker/different */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+            color: var(--wave-playhead);
+            /* Highlight active */
+            transform: translateY(1px);
+            border-top: 2px solid var(--border-color);
+            /* simulate depth */
+        }
+
+        .cassette-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+        }
+
+        /* Selection Mode Styles */
+        #timeDisplay.selection-active {
+            color: var(--wave-playhead);
+        }
+
+        .selection-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 0 16px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.7rem;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .selection-indicator.active {
+            display: flex;
+        }
+
+        .selection-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .selection-range {
+            color: var(--wave-playhead);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Left Panel: Configuration -->
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>Configuration</h1>
+                    <p>Speedy WASM Parameters</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Input Source</label>
+                <div style="display: flex;">
+                    <input type="file" id="audioFile" accept="audio/*" style="display: none;">
+                    <input type="text" id="fileNameDisplay" readonly placeholder="NO FILE SELECTED"
+                        style="flex: 1; border-right: none; cursor: default; color: var(--text-muted);">
+                    <button id="browseBtn" class="btn btn-secondary"
+                        style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color);">
+                        LOAD
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="speed">
+                    Speed Multiplier
+                    <span id="speedVal">2.0x</span>
+                </label>
+                <input type="range" id="speed" min="0.5" max="3.0" step="0.1" value="2.0">
+            </div>
+
+            <div class="form-group">
+                <label for="nonlinear">
+                    Non-linear Factor
+                    <span id="nonlinearVal">1.0</span>
+                </label>
+                <input type="range" id="nonlinear" min="0.0" max="1.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="form-group" style="border-bottom: none;">
+                <label for="feedback">
+                    Feedback Strength
+                    <span id="feedbackVal">0.1</span>
+                </label>
+                <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="linearRef" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="linearRef" style="width: 14px; height: 14px; cursor: pointer;">
+                    <span style="font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Enable Linear Reference</span>
+                </label>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color);">
+                <button id="processBtn" class="btn btn-primary" disabled
+                    style="height: 64px; width: 100%; font-size: 0.9rem; letter-spacing: 0.1em; font-weight: 700;">
+                    <div id="processingIndicator" class="spinner"
+                        style="display:none; margin-right:16px; border-width: 3px; width: 20px; height: 20px;"></div>
+                    INITIATE PROCESSING
+                </button>
+            </div>
+
+            <div id="statusLog" class="log-container">
+                <div class="log-entry">
+                    <span class="log-time">SYS</span>
+                    <span class="log-msg">Ready.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Statistics -->
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>Statistics</h1>
+                    <p>Signal Analysis & Metrics</p>
+                </div>
+            </div>
+
+            <div id="statsScrollContainer" class="stats-scroll-container">
+                <div id="emptyStatsPlaceholder" class="empty-stats-placeholder">
+                    Upload audio and process to view statistics
+                </div>
+
+                <div id="statsContainer" class="stats-grid" style="display:none;">
+                    <div class="stats-section">
+                        <div class="stats-section-header">Input Signal</div>
+                        <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-section-header">Performance</div>
+                        <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear"
+                                class="stats-val">-</span></div>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-section-header">Output Signal</div>
+                        <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span>
+                        </div>
+                        <div class="stats-row"><span>Compression</span> <span id="compressionRatio"
+                                class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-section">
+                        <div class="stats-section-header">Audio Analysis</div>
+                        <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waveform Section -->
+    <div class="waveform-container">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>Waveform</h1>
+                    <p>Time-Domain Visualization</p>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <button id="themeToggle" class="btn btn-secondary"
+                        style="padding: 6px 12px; border:1px solid var(--border-color); width:auto; font-size: 0.65rem;">THEME</button>
+                </div>
+            </div>
+
+            <!-- Enhanced Playback Toolbar -->
+            <div
+                style="padding: 0; border-bottom: 1px solid var(--border-color); background: var(--panel-header-bg); display: flex; align-items: stretch; height: 48px; flex-wrap: nowrap; overflow: hidden;">
+                <!-- Main Playback Group -->
+                <div style="display: flex; border-right: 1px solid var(--border-color);">
+                    <button id="stopBtn" class="btn btn-secondary"
+                        style="width: 50px; border-right: 1px solid var(--border-color);" disabled
+                        title="Stop (Return to Start)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12" />
+                        </svg>
+                    </button>
+
+                    <button id="seekBackBtn" class="btn btn-secondary"
+                        style="width: 45px; border-right: 1px solid var(--border-color);" disabled
+                        title="Seek Backward 5s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                        </svg>
+                    </button>
+
+                    <button id="playPauseBtn" class="btn btn-secondary"
+                        style="width: 80px; border-right: 1px solid var(--border-color); background: var(--btn-secondary-bg); font-weight: 700; color: var(--text-main); letter-spacing: 0.05em;"
+                        disabled title="Play/Pause">
+                        <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+                            style="display:none;">
+                            <rect x="6" y="4" width="4" height="16" />
+                            <rect x="14" y="4" width="4" height="16" />
+                        </svg>
+                    </button>
+
+                    <button id="seekForwardBtn" class="btn btn-secondary"
+                        style="width: 45px; border-right: 1px solid var(--border-color);" disabled
+                        title="Seek Forward 5s">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Buffer Selection Group (Cassette Style) -->
+                <div style="display: flex; border-right: 1px solid var(--border-color);">
+                    <button id="playOriginalBtn" class="cassette-btn" style="width: 120px;" disabled>
+                        ORIGINAL
+                    </button>
+                    <button id="playLinearBtn" class="cassette-btn" style="width: 120px;" disabled>
+                        LINEAR
+                    </button>
+                    <button id="playProcessedBtn" class="cassette-btn" style="width: 120px;" disabled>
+                        PROCESSED
+                    </button>
+                </div>
+
+                <!-- Selection Indicator -->
+                <div id="selectionIndicator" class="selection-indicator">
+                    <span class="selection-label">SEL:</span>
+                    <span class="selection-range">0:00 - 0:00 (0:00)</span>
+                </div>
+
+                <!-- Time Display -->
+                <div
+                    style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'SF Mono', monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-main); border-right: 1px solid var(--border-color); min-width: 140px; background: var(--panel-bg);">
+                    <span id="timeDisplay" style="letter-spacing: 0.05em;">0:00 / 0:00</span>
+                </div>
+
+                <!-- View Options -->
+                <div
+                    style="display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0; background: var(--panel-header-bg);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span
+                            style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Scale</span>
+                        <select id="viewMode"
+                            style="width: auto; padding: 2px 6px; font-size: 0.7rem; height: 24px; border: 1px solid var(--border-color); background: var(--panel-bg); font-weight: 600;">
+                            <option value="fit">FIT</option>
+                            <option value="realtime">RT</option>
+                        </select>
+                    </div>
+
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="inspectMode" style="width: 14px; height: 14px; cursor: pointer;">
+                        <span
+                            style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Inspect</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+            <div style="position:relative; background:var(--wave-bg);">
+                <canvas id="waveformCanvas" touch-action="none" style="width:100%; height: 280px; display:block;"></canvas>
+            </div>
+
+            <!-- Footer Toolbar (Zoom & Selection) -->
+            <div
+                style="padding: 0; border-top: 1px solid var(--border-color); display: flex; align-items: stretch; height: 40px; background: var(--panel-header-bg);">
+                <div
+                    style="display: flex; align-items: center; padding: 0 16px; border-right: 1px solid var(--border-color); flex: 1;">
+                    <label
+                        style="font-size: 0.6rem; font-family: 'SF Mono', monospace; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-right: 12px;">Zoom</label>
+                    <input type="range" id="zoomLevel" min="0.1" max="5.0" step="0.1" value="1.0"
+                        style="flex: 1; max-width: 300px;">
+                </div>
+
+                <button id="clearSelectionBtn" class="btn btn-secondary"
+                    style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;"
+                    disabled>
+                    CLEAR SEL
+                </button>
+
+                <button id="zoomToSelectBtn" class="btn btn-secondary"
+                    style="width: auto; padding: 0 20px; border-left: 1px solid var(--border-color); height: 100%; font-size: 0.65rem;">
+                    ZOOM TO SELECTION
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="demo.js"></script>
+    <script>
+        // File Picker UI Logic
+        const browseBtn = document.getElementById('browseBtn');
+        const fileInput = document.getElementById('audioFile');
+        const nameDisplay = document.getElementById('fileNameDisplay');
+
+        const openFile = () => fileInput.click();
+        browseBtn.addEventListener('click', openFile);
+        nameDisplay.addEventListener('click', openFile); // Clicking text box also opens
+
+        fileInput.addEventListener('change', function () {
+            if (this.files && this.files.length > 0) {
+                nameDisplay.value = this.files[0].name;
+                nameDisplay.style.color = 'var(--text-main)';
+            } else {
+                nameDisplay.value = '';
+            }
+        });
+
+        // Simple helper to hide placeholder when stats appear
+        const statsContainer = document.getElementById('statsContainer');
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.target.style.display !== 'none') {
+                    document.getElementById('emptyStatsPlaceholder').style.display = 'none';
+                    // Enable seek buttons when we have data
+                    document.getElementById('seekBackBtn').disabled = false;
+                    document.getElementById('seekForwardBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('playPauseBtn').disabled = false;
+                    // Note: Processed/Original buttons are enabled via updateButtonStates in demo.js
+                }
+            });
+        });
+        observer.observe(statsContainer, { attributes: true, attributeFilter: ['style'] });
+
+        // Seek Logic
+        const seek = (delta) => {
+            if (!demo.waveformViewer) return;
+            const current = demo.playbackState.currentTime;
+            const target = Math.max(0, Math.min(demo.playbackState.duration, current + delta));
+            demo.waveformViewer.onSeek(target);
+        };
+
+        document.getElementById('seekBackBtn').addEventListener('click', () => seek(-5));
+        document.getElementById('seekForwardBtn').addEventListener('click', () => seek(5));
+
+        // Clear Selection Button
+        document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+            if (demo.clearSelection) {
+                demo.clearSelection();
+            }
+        });
+
+        // Keyboard shortcut: Escape to clear selection
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && demo.activeSelection) {
+                e.preventDefault();
+                demo.clearSelection();
+            }
+        });
+    </script>
+</body>
+
+</html>
