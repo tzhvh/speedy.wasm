@@ -8,6 +8,7 @@ class SpeedyDemo {
         this.sourceIdCounter = 0;
         this.originalBuffer = null;
         this.processedBuffer = null;
+        this.linearBuffer = null;
         this.isProcessing = false;
         this.moduleLoaded = false;
         this.SonicStream = null;
@@ -42,7 +43,8 @@ class SpeedyDemo {
         this.params = {
             speed: 2.0,
             nonlinear: 1.0,
-            feedback: 0.1
+            feedback: 0.1,
+            linearRefEnabled: false
         };
 
         // Track last processed parameters for staleness detection
@@ -76,6 +78,14 @@ class SpeedyDemo {
             });
         });
 
+        // Linear Reference checkbox
+        const linearRefCheckbox = document.getElementById('linearRef');
+        linearRefCheckbox.addEventListener('change', (e) => {
+            this.params.linearRefEnabled = e.target.checked;
+            this.waveformViewer.setLinearReferenceEnabled(e.target.checked);
+            this.updateProcessBtnState();
+        });
+
         // File input
         this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
 
@@ -86,6 +96,10 @@ class SpeedyDemo {
         // Buffer Selection (Cassette Toggles)
         document.getElementById('playOriginalBtn').addEventListener('click', () => {
             this.setBufferSelection('original');
+        });
+
+        document.getElementById('playLinearBtn').addEventListener('click', () => {
+            this.setBufferSelection('linear');
         });
 
         document.getElementById('playProcessedBtn').addEventListener('click', () => {
@@ -127,7 +141,9 @@ class SpeedyDemo {
     bindWaveformEvents() {
         // Connect waveform viewer callbacks
         this.waveformViewer.onSeek = (time) => {
-             const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+             const buffer = this.selectedBufferType === 'original' ? this.originalBuffer
+                              : this.selectedBufferType === 'linear' ? this.linearBuffer
+                              : this.processedBuffer;
              if (!buffer) return;
 
              // Clamp time to selection bounds if active
@@ -147,7 +163,9 @@ class SpeedyDemo {
 
             // If currently playing, restart to apply/remove selection bounds
             if (this.playbackState.isPlaying && !this.playbackState.isPaused) {
-                const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+                const buffer = this.selectedBufferType === 'original' ? this.originalBuffer
+                                 : this.selectedBufferType === 'linear' ? this.linearBuffer
+                                 : this.processedBuffer;
                 if (buffer) {
                     const currentTime = this.playbackState.currentTime;
                     let seekTime = currentTime;
@@ -231,7 +249,9 @@ class SpeedyDemo {
             const elapsed = (this.audioContext.currentTime - this.playbackState.startTime) % this.playbackState.duration;
             const progress = elapsed / this.playbackState.duration;
             
-            const newBuffer = type === 'original' ? this.originalBuffer : this.processedBuffer;
+            const newBuffer = type === 'original' ? this.originalBuffer
+                             : type === 'linear' ? this.linearBuffer
+                             : this.processedBuffer;
             if (newBuffer) {
                 const newTime = progress * newBuffer.duration;
                 this.stopPlayback(false);
@@ -252,6 +272,7 @@ class SpeedyDemo {
 
     updateButtonStates() {
         const playOriginalBtn = document.getElementById('playOriginalBtn');
+        const playLinearBtn = document.getElementById('playLinearBtn');
         const playProcessedBtn = document.getElementById('playProcessedBtn');
         const playPauseBtn = document.getElementById('playPauseBtn');
         const playIcon = document.getElementById('playIcon');
@@ -259,13 +280,16 @@ class SpeedyDemo {
 
         // Toggle Buttons State (Cassette Logic)
         playOriginalBtn.disabled = !this.originalBuffer;
+        playLinearBtn.disabled = !this.linearBuffer;
         playProcessedBtn.disabled = !this.processedBuffer;
 
         playOriginalBtn.classList.toggle('active', this.selectedBufferType === 'original');
+        playLinearBtn.classList.toggle('active', this.selectedBufferType === 'linear');
         playProcessedBtn.classList.toggle('active', this.selectedBufferType === 'processed');
 
         // Play/Pause Button
         const hasActiveBuffer = (this.selectedBufferType === 'original' && this.originalBuffer) ||
+                              (this.selectedBufferType === 'linear' && this.linearBuffer) ||
                               (this.selectedBufferType === 'processed' && this.processedBuffer);
 
         playPauseBtn.disabled = !hasActiveBuffer;
@@ -290,7 +314,8 @@ class SpeedyDemo {
         // Compare each parameter
         return this.params.speed !== this.lastProcessedParams.speed ||
                this.params.nonlinear !== this.lastProcessedParams.nonlinear ||
-               this.params.feedback !== this.lastProcessedParams.feedback;
+               this.params.feedback !== this.lastProcessedParams.feedback ||
+               this.params.linearRefEnabled !== this.lastProcessedParams.linearRefEnabled;
     }
 
     updateProcessBtnState() {
@@ -340,7 +365,9 @@ class SpeedyDemo {
 
         // If playback was active, restart without selection bounds
         if (wasPlaying) {
-            const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+            const buffer = this.selectedBufferType === 'original' ? this.originalBuffer
+                             : this.selectedBufferType === 'linear' ? this.linearBuffer
+                             : this.processedBuffer;
             if (buffer) {
                 this.stopPlayback(false);
                 this.playBuffer(buffer, this.selectedBufferType, currentTime);
@@ -366,7 +393,9 @@ class SpeedyDemo {
     }
 
     resumePlayback() {
-        const buffer = this.selectedBufferType === 'original' ? this.originalBuffer : this.processedBuffer;
+        const buffer = this.selectedBufferType === 'original' ? this.originalBuffer
+                         : this.selectedBufferType === 'linear' ? this.linearBuffer
+                         : this.processedBuffer;
         if (!buffer) return;
 
         if (this.playbackState.isPaused) {
@@ -547,31 +576,55 @@ class SpeedyDemo {
             this.stopPlayback();
             this.log('Processing...');
 
-            // Create SonicStream
+            // Create SonicStream instances
             const channels = 1; // Force mono
             const sampleRate = this.originalBuffer.sampleRate;
 
-            const sonic = new this.SonicStream(sampleRate, channels);
-            sonic.setSpeed(this.params.speed);
-            sonic.enableNonlinearSpeedup(this.params.nonlinear);
-            sonic.setDurationFeedbackStrength(this.params.feedback);
-            sonic.setupSpeedCallback();
+            // Processed stream (with nonlinear)
+            const sonicProcessed = new this.SonicStream(sampleRate, channels);
+            sonicProcessed.setSpeed(this.params.speed);
+            sonicProcessed.enableNonlinearSpeedup(this.params.nonlinear);
+            sonicProcessed.setDurationFeedbackStrength(this.params.feedback);
+            sonicProcessed.setupSpeedCallback();
+
+            // Linear stream (nonlinear=0)
+            let sonicLinear = null;
+            if (this.params.linearRefEnabled) {
+                sonicLinear = new this.SonicStream(sampleRate, channels);
+                sonicLinear.setSpeed(this.params.speed);
+                sonicLinear.enableNonlinearSpeedup(0);
+                sonicLinear.setDurationFeedbackStrength(this.params.feedback);
+                sonicLinear.setupSpeedCallback();
+            }
 
             // Prepare input data (convert to mono if needed)
             const inputData = this.getMonoData(this.originalBuffer);
 
-            // Process in chunks
+            // Process in chunks (parallel when both enabled)
             const chunkSize = 8192;
-            const outputChunks = [];
+            const processedChunks = [];
+            const linearChunks = [];
 
             for (let offset = 0; offset < inputData.length; offset += chunkSize) {
                 const chunk = inputData.subarray(offset, offset + chunkSize);
 
-                sonic.writeFloatToStream(chunk, chunk.length);
+                // Write to both streams
+                sonicProcessed.writeFloatToStream(chunk, chunk.length);
+                if (sonicLinear) {
+                    sonicLinear.writeFloatToStream(chunk, chunk.length);
+                }
 
+                // Read from processed stream
                 let output;
-                while ((output = sonic.readFloatFromStream(chunkSize))) {
-                    outputChunks.push(output);
+                while ((output = sonicProcessed.readFloatFromStream(chunkSize))) {
+                    processedChunks.push(output);
+                }
+
+                // Read from linear stream (if enabled)
+                if (sonicLinear) {
+                    while ((output = sonicLinear.readFloatFromStream(chunkSize))) {
+                        linearChunks.push(output);
+                    }
                 }
 
                 if (offset % (chunkSize * 10) === 0) {
@@ -581,29 +634,53 @@ class SpeedyDemo {
                 }
             }
 
-            sonic.flushStream();
+            // Flush both streams
+            sonicProcessed.flushStream();
             let output;
-            while ((output = sonic.readFloatFromStream(chunkSize))) {
-                outputChunks.push(output);
+            while ((output = sonicProcessed.readFloatFromStream(chunkSize))) {
+                processedChunks.push(output);
+            }
+
+            if (sonicLinear) {
+                sonicLinear.flushStream();
+                while ((output = sonicLinear.readFloatFromStream(chunkSize))) {
+                    linearChunks.push(output);
+                }
             }
 
             const endTime = performance.now();
             const procTime = endTime - startTime;
 
-            const totalLength = outputChunks.reduce((sum, c) => sum + c.length, 0);
-
-            const result = new Float32Array(totalLength);
+            // Combine processed chunks
+            const totalProcessedLength = processedChunks.reduce((sum, c) => sum + c.length, 0);
+            const processedResult = new Float32Array(totalProcessedLength);
             let offset = 0;
-            for (const chunk of outputChunks) {
-                result.set(chunk, offset);
+            for (const chunk of processedChunks) {
+                processedResult.set(chunk, offset);
                 offset += chunk.length;
             }
 
-            this.processedBuffer = this.audioContext.createBuffer(1, totalLength, sampleRate);
-            this.processedBuffer.copyToChannel(result, 0);
+            this.processedBuffer = this.audioContext.createBuffer(1, totalProcessedLength, sampleRate);
+            this.processedBuffer.copyToChannel(processedResult, 0);
+
+            // Combine linear chunks (if enabled)
+            if (this.params.linearRefEnabled && sonicLinear) {
+                const totalLinearLength = linearChunks.reduce((sum, c) => sum + c.length, 0);
+                const linearResult = new Float32Array(totalLinearLength);
+                offset = 0;
+                for (const chunk of linearChunks) {
+                    linearResult.set(chunk, offset);
+                    offset += chunk.length;
+                }
+
+                this.linearBuffer = this.audioContext.createBuffer(1, totalLinearLength, sampleRate);
+                this.linearBuffer.copyToChannel(linearResult, 0);
+            } else {
+                this.linearBuffer = null;
+            }
 
             // Build position map for bifurcated playhead
-            const speedProfile = sonic.getSpeedProfile();
+            const speedProfile = sonicProcessed.getSpeedProfile();
             if (speedProfile && this.originalBuffer && this.processedBuffer) {
                 this.waveformViewer.setSpeedProfile(speedProfile);
                 this.waveformViewer.buildPositionMap(
@@ -616,8 +693,8 @@ class SpeedyDemo {
             this.log(`Done! Original: ${this.originalBuffer.duration.toFixed(2)}s, Processed: ${this.processedBuffer.duration.toFixed(2)}s`);
 
             this.updateOutputStats(procTime / 1000);
-            this.updateAudioAnalysisDisplay(inputData, result, outputChunks.length);
-            this.waveformViewer.setData(this.originalBuffer, this.processedBuffer);
+            this.updateAudioAnalysisDisplay(inputData, processedResult, processedChunks.length);
+            this.waveformViewer.setData(this.originalBuffer, this.processedBuffer, this.linearBuffer);
             this.setBufferSelection('processed');
             this.playBuffer(this.processedBuffer, 'processed', 0);
 

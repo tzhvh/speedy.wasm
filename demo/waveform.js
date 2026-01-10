@@ -9,6 +9,7 @@ export class WaveformViewer {
 
         this.originalBuffer = null;
         this.processedBuffer = null;
+        this.linearBuffer = null;
         
         // View State
         this.scaleMode = 'fit'; // 'fit' or 'realtime'
@@ -51,6 +52,8 @@ export class WaveformViewer {
             { id: 'processed', type: 'waveform', heightRatio: 0.35, data: null, color: 'proc' },
             { id: 'speedProfile', type: 'lineChart', heightRatio: 0.30, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
         ];
+
+        this.linearReferenceEnabled = false;
 
         // Position mapping for bifurcated playhead
         this.positionMap = {
@@ -95,6 +98,7 @@ export class WaveformViewer {
             origin: style.getPropertyValue('--wave-origin').trim() || '#777',
             proc: style.getPropertyValue('--wave-proc').trim() || '#fff',
             speed: style.getPropertyValue('--wave-speed').trim() || '#8b5cf6',
+            linear: style.getPropertyValue('--wave-linear').trim() || '#f59e0b',
             bifurcated: style.getPropertyValue('--wave-bifurcated').trim() || 'rgba(249, 115, 22, 0.5)',
             playhead: style.getPropertyValue('--wave-playhead').trim() || '#0f0',
             selection: style.getPropertyValue('--wave-selection').trim() || 'rgba(255, 255, 255, 0.1)',
@@ -117,6 +121,28 @@ export class WaveformViewer {
 
     setSpeedProfile(speedProfileData) {
         this.updateRowData('speedProfile', speedProfileData);
+        this.draw();
+    }
+
+    setLinearReferenceEnabled(enabled) {
+        this.linearReferenceEnabled = enabled;
+
+        if (enabled) {
+            // 4-row layout
+            this.rowConfig = [
+                { id: 'original', type: 'waveform', heightRatio: 0.25, data: this.originalBuffer, color: 'origin' },
+                { id: 'processed', type: 'waveform', heightRatio: 0.25, data: this.processedBuffer, color: 'proc' },
+                { id: 'linear', type: 'waveform', heightRatio: 0.25, data: this.linearBuffer, color: 'linear' },
+                { id: 'speedProfile', type: 'lineChart', heightRatio: 0.25, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
+            ];
+        } else {
+            // 3-row layout (original)
+            this.rowConfig = [
+                { id: 'original', type: 'waveform', heightRatio: 0.35, data: this.originalBuffer, color: 'origin' },
+                { id: 'processed', type: 'waveform', heightRatio: 0.35, data: this.processedBuffer, color: 'proc' },
+                { id: 'speedProfile', type: 'lineChart', heightRatio: 0.30, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
+            ];
+        }
         this.draw();
     }
 
@@ -174,7 +200,9 @@ export class WaveformViewer {
 
         const buffer = bufferType === 'processed'
             ? this.processedBuffer
-            : this.originalBuffer;
+            : bufferType === 'linear'
+                ? this.linearBuffer
+                : this.originalBuffer;
         const duration = buffer ? buffer.duration : this.getMaxDuration();
 
         return duration / (speedProfileMaxTime || 1);
@@ -199,7 +227,9 @@ export class WaveformViewer {
         // Calculate target timeScale based on target buffer
         const targetBufferObj = targetBuffer === 'processed'
             ? this.processedBuffer
-            : this.originalBuffer;
+            : targetBuffer === 'linear'
+                ? this.linearBuffer
+                : this.originalBuffer;
         const targetDuration = targetBufferObj ? targetBufferObj.duration : this.getMaxDuration();
         const targetScale = targetDuration / (speedProfileMaxTime || 1);
 
@@ -358,7 +388,7 @@ export class WaveformViewer {
         this.draw();
     }
 
-    setData(original, processed) {
+    setData(original, processed, linear = null) {
         // Cancel any ongoing animation since buffers changed
         if (this.speedProfileAnimation.animationId !== null) {
             cancelAnimationFrame(this.speedProfileAnimation.animationId);
@@ -368,8 +398,12 @@ export class WaveformViewer {
 
         this.originalBuffer = original;
         this.processedBuffer = processed;
+        this.linearBuffer = linear;
         this.updateRowData('original', original);
         this.updateRowData('processed', processed);
+        if (this.linearReferenceEnabled) {
+            this.updateRowData('linear', linear);
+        }
         this.draw();
     }
 
@@ -477,6 +511,7 @@ export class WaveformViewer {
         let max = 0;
         if (this.originalBuffer) max = Math.max(max, this.originalBuffer.duration);
         if (this.processedBuffer) max = Math.max(max, this.processedBuffer.duration);
+        if (this.linearBuffer) max = Math.max(max, this.linearBuffer.duration);
         return max;
     }
 
