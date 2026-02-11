@@ -13,9 +13,9 @@ Speedy.wasm brings the Mach1 nonlinear speech speedup algorithm to the browser. 
 ## Preview
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/dark_wav.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/light_wav.png">
-  <img alt="Speedy.wasm waveform visualization" src="docs/light_wav.png">
+  <source media="(prefers-color-scheme: dark)" srcset="g3doc/dark_wav.png">
+  <source media="(prefers-color-scheme: light)" srcset="g3doc/light_wav.png">
+  <img alt="Speedy.wasm waveform visualization" src="g3doc/light_wav.png">
 </picture>
 
 **Features:**
