@@ -1,18 +1,21 @@
 # Simple makefile to build the speedy library.
-# This depends upon Sonic, which is assumed to be in a parallel directory.
+# Dependencies are expected in the deps/ directory.
+#
+# Prerequisites:
+#   sudo apt-get install libfftw3-dev libgmock-dev libgtest-dev libglog-dev
 
-# To install fftw this might work on your system
-#		sudo apt-get install -y fftw-dev
-
-SONIC_DIR=../sonic
-FFTW_DIR=../fftw
-KISS_DIR=../kissfft
+SONIC_DIR=deps/sonic
+FFTW_DIR=deps/fftw
+KISS_DIR=deps/kissfft
 
 CC=gcc
 CPLUSPLUS=g++
 CFLAGS=-g -DFFTW -fPIC -I$(SONIC_DIR) -L$(SONIC_DIR) -I$(FFTW_DIR)
 
-all: libspeedy.so speedy_wave
+all: deps libspeedy.so speedy_wave wasm-all wasm-gh-pages
+
+deps:
+	$(MAKE) -C $(SONIC_DIR) libsonic_internal.so
 
 speedy_wave: speedy_wave.cc libspeedy.so $(SONIC_DIR)/libsonic_internal.so
 	$(CPLUSPLUS) $(CFLAGS) speedy_wave.cc libspeedy.so $(SONIC_DIR)/libsonic_internal.so -lc -lfftw3 -o speedy_wave
@@ -30,12 +33,26 @@ clean:
 
 # For the tests that follow, you will probably need to set your LD_LIBRARY_PATH
 # to point to the library locations.  For example:
-#		export LD_LIBRARY_PATH=/usr/local/lib:../kissfft:../sonic
+#	export LD_LIBRARY_PATH=/usr/local/lib:deps/kissfft:deps/sonic
 
 test: kiss_fft_test dynamic_time_warping_test sonic_classic_test sonic_test speedy_test
 
+# === WebAssembly / Emscripten Targets ===
+# These delegate to Makefile.emscripten for building WASM modules
+WASM_TARGETS = es6 umd wasm-all wasm-clean wasm-public wasm-gh-pages wasm-deps
+
+.PHONY: $(WASM_TARGETS)
+
+$(WASM_TARGETS):
+	$(MAKE) -f Makefile.emscripten $(subst wasm-,,$@)
+
+# Convenience aliases
+wasm-all: es6 umd
+wasm-clean: clean
+wasm-deps: deps
+
 kiss_fft_test: kiss_fft_test.cc
-	g++ -DKISS_FFT -I../kissfft kiss_fft_test.cc ../kissfft/libkissfft-float.so \
+	g++ -DKISS_FFT -I$(KISS_DIR) kiss_fft_test.cc $(KISS_DIR)/libkissfft-float.so \
 		-o kiss_fft_test -lgtest -DMATCH_MATLAB
 	./kiss_fft_test
 
@@ -66,23 +83,7 @@ speedy_test: speedy_test.cc
 	   -o speedy_test
 	 ./speedy_test
 
-# Not the following might help you setup the necessary prereqs for this project.
-# Do these commands one level up, so you will end up with speedy, sonic,
-# kissfft, fftw and googletest in parallel directories
-
-# git clone https://github.com/mborgerding/kissfft.git
-# git clone --recursive https://github.com/waywardgeek/sonic.git
-# git clone https://github.com/google/speedy.git
-# git clone https://github.com/google/googletest.git
-
-# wget http://fftw.org/fftw-3.3.10.tar.gz
-# tar xvzf fftw-3.3.10.tar.gz
-# cd fftw-3.3.10
-# ./configure
-# make
-# sudo make install
-
-# cd sonic
-# make
-
-# sudo apt-get install libgmock-dev
+# Prerequisites (in deps/):
+#   git clone https://github.com/mborgerding/kissfft.git deps/kissfft
+#   git clone --recursive https://github.com/waywardgeek/sonic.git deps/sonic
+#   sudo apt-get install libfftw3-dev libgmock-dev libgtest-dev libglog-dev
