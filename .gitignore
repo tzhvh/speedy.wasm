@@ -10,9 +10,9 @@ build/
 *.so
 speedy_wave
 
-# WebAssembly files
+# WebAssembly files (but allow in public/ for GitHub Pages)
 *.wasm
-public/dist/*.wasm
+!public/*.wasm
 
 # Dependency build artifacts
 deps/*/build/

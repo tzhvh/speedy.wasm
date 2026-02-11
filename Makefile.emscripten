@@ -80,13 +80,14 @@ $(DIST_DIR)/speedy.umd.js: $(ALL_SOURCES) speedy.h sonic2.h
 	$(EMPP) $(CFLAGS_UMD) $(ALL_SOURCES) -o $@
 
 # Public ES6 module (for GitHub Pages)
-$(PUBLIC_DIST_DIR)/speedy.js: $(ALL_SOURCES) speedy.h sonic2.h
+# Build both .js and .wasm - emscripten automatically produces both
+$(PUBLIC_DIST_DIR)/speedy.js $(PUBLIC_DIST_DIR)/speedy.wasm: $(ALL_SOURCES) speedy.h sonic2.h
 	@echo "Building ES6 module for GitHub Pages..."
 	@mkdir -p $(PUBLIC_DIST_DIR)
-	$(EMPP) $(CFLAGS_ES6) $(ALL_SOURCES) -o $@
+	$(EMPP) $(CFLAGS_ES6) $(ALL_SOURCES) -o $(PUBLIC_DIST_DIR)/speedy.js
 
 # Public target (builds demo-ready version)
-public: $(PUBLIC_DIST_DIR)/speedy.js
+public: $(PUBLIC_DIST_DIR)/speedy.js $(PUBLIC_DIST_DIR)/speedy.wasm
 
 # GitHub Pages convenience target
 gh-pages: public
