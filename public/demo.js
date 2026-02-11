@@ -547,12 +547,18 @@ class SpeedyDemo {
             this.updateInputStats();
 
             // Clear output stats from previous run
-            document.getElementById('outDuration').textContent = '-';
-            document.getElementById('outSamples').textContent = '-';
-            document.getElementById('compressionRatio').textContent = '-';
-            document.getElementById('outSize').textContent = '-';
-            document.getElementById('procTime').textContent = '-';
-            document.getElementById('rtFactor').textContent = '-';
+            const statsToClear = [
+                'outDuration', 'outSamples', 'compressionRatio', 'timeSaved', 'outSize',
+                'outPeak', 'outRMS', 'outCrest', 'levelChange',
+                'inPeak', 'inRMS', 'inCrest', 'inZeroX',  // Clear input analysis from previous run
+                'procTime', 'rtFactor', 'framesAnalyzed', 'fftSize', 'frameRate', 'lookaheadLatency',
+                'paramSpeed', 'avgSpeed', 'speedRange', 'speedVariance', 'paramNonlinear', 'paramFeedback', 'driftCorrection',
+                'inSamplesDbg', 'outSamplesDbg', 'chunksProcessed', 'spectrogramData', 'speedProfileInfo', 'wasmHeap'
+            ];
+            statsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '-';
+            });
         } catch (err) {
             this.log('Error loading file: ' + err.message);
         }
@@ -561,31 +567,61 @@ class SpeedyDemo {
     analyzeAudio(float32Array) {
         let sumSquares = 0;
         let peak = 0;
+        let zeroCrossings = 0;
+        let prevSample = 0;
 
         for (let i = 0; i < float32Array.length; i++) {
             const sample = Math.abs(float32Array[i]);
             sumSquares += sample * sample;
             if (sample > peak) peak = sample;
+            
+            // Count zero crossings
+            if ((prevSample >= 0 && float32Array[i] < 0) || (prevSample < 0 && float32Array[i] >= 0)) {
+                zeroCrossings++;
+            }
+            prevSample = float32Array[i];
         }
 
+        const rms = Math.sqrt(sumSquares / float32Array.length);
+        const crestFactor = rms > 0 ? peak / rms : 0;
+
         return {
-            peak: peak.toFixed(3),
-            rms: Math.sqrt(sumSquares / float32Array.length).toFixed(3)
+            peak: peak,
+            rms: rms,
+            crestFactor: crestFactor,
+            zeroCrossings: zeroCrossings
         };
     }
 
     updateAudioAnalysisDisplay(inputData, outputData, chunkCount) {
         const inputAnalysis = this.analyzeAudio(inputData);
-        document.getElementById('inPeak').textContent = inputAnalysis.peak;
-        document.getElementById('inRMS').textContent = inputAnalysis.rms;
+
+        // Input Signal stats with verbose format
+        document.getElementById('inPeak').textContent = `${inputAnalysis.peak.toFixed(6)} · ${this.formatDb(inputAnalysis.peak)} dBFS · ${(inputAnalysis.peak * 100).toFixed(2)}% FS`;
+        document.getElementById('inRMS').textContent = `${inputAnalysis.rms.toFixed(6)} · ${this.formatDb(inputAnalysis.rms)} dBFS · ${(inputAnalysis.rms * 100).toFixed(2)}% FS`;
+        document.getElementById('inCrest').textContent = `${inputAnalysis.crestFactor.toFixed(2)}x · ${this.formatDb(inputAnalysis.crestFactor)} dB`;
+        document.getElementById('inZeroX').textContent = `${inputAnalysis.zeroCrossings.toLocaleString()} · ${((inputAnalysis.zeroCrossings / inputData.length) * 100).toFixed(2)}% · ${(inputAnalysis.zeroCrossings / this.originalBuffer.duration).toFixed(0)} Hz`;
+
+        // Store input analysis for later use
+        this.inputAnalysis = inputAnalysis;
 
         if (outputData) {
             const outputAnalysis = this.analyzeAudio(outputData);
-            document.getElementById('outPeak').textContent = outputAnalysis.peak;
-            document.getElementById('outRMS').textContent = outputAnalysis.rms;
+
+            // Output Signal stats with verbose format
+            document.getElementById('outPeak').textContent = `${outputAnalysis.peak.toFixed(6)} · ${this.formatDb(outputAnalysis.peak)} dBFS · ${(outputAnalysis.peak * 100).toFixed(2)}% FS`;
+            document.getElementById('outRMS').textContent = `${outputAnalysis.rms.toFixed(6)} · ${this.formatDb(outputAnalysis.rms)} dBFS · ${(outputAnalysis.rms * 100).toFixed(2)}% FS`;
+            document.getElementById('outCrest').textContent = `${outputAnalysis.crestFactor.toFixed(2)}x · ${this.formatDb(outputAnalysis.crestFactor)} dB`;
+            
+            // Level change
+            const peakChange = outputAnalysis.peak - inputAnalysis.peak;
+            const rmsChange = outputAnalysis.rms - inputAnalysis.rms;
+            document.getElementById('levelChange').textContent = `Δpeak: ${(peakChange >= 0 ? '+' : '')}${peakChange.toFixed(6)} · Δrms: ${(rmsChange >= 0 ? '+' : '')}${rmsChange.toFixed(6)} · ${peakChange > 0 ? 'louder' : peakChange < 0 ? 'quieter' : 'same'} · ${outputAnalysis.crestFactor > inputAnalysis.crestFactor ? 'more' : 'less'} compressed`;
+            
+            this.outputAnalysis = outputAnalysis;
         }
 
-        document.getElementById('chunksProcessed').textContent = chunkCount;
+        document.getElementById('chunksProcessed').textContent = `${chunkCount.toLocaleString()} · avg ${(inputData.length / chunkCount).toFixed(0)} smp/chk`;
     }
 
     applySpeedyParams(sonicStream) {
@@ -749,6 +785,8 @@ class SpeedyDemo {
                     this.processedBuffer.duration,
                     speedProfile
                 );
+                // Update processing stats with speed profile data
+                this.updateProcessingStats(speedProfile, sonicProcessed);
             }
 
             this.log(`Done! Original: ${this.originalBuffer.duration.toFixed(2)}s, Processed: ${this.processedBuffer.duration.toFixed(2)}s`);
@@ -789,36 +827,132 @@ class SpeedyDemo {
 
     updateInputStats() {
         if (!this.originalBuffer) return;
-        document.getElementById('inDuration').textContent = this.originalBuffer.duration.toFixed(2) + 's';
-        document.getElementById('inSampleRate').textContent = this.originalBuffer.sampleRate + ' Hz';
-        document.getElementById('inChannels').textContent = this.originalBuffer.numberOfChannels;
-        document.getElementById('inSamples').textContent = this.originalBuffer.length.toLocaleString();
+        const dur = this.originalBuffer.duration;
+        const sr = this.originalBuffer.sampleRate;
+        const samples = this.originalBuffer.length;
+        const ch = this.originalBuffer.numberOfChannels;
+        
+        // Input Signal verbose format
+        document.getElementById('inDuration').textContent = `${dur.toFixed(2)} s · ${(dur * 1000).toFixed(0)} ms · ${(dur / 60).toFixed(2)} min`;
+        document.getElementById('inSamples').textContent = `${samples.toLocaleString()} · 0x${samples.toString(16).toUpperCase()} · ${(samples * 4 / 1024 / 1024).toFixed(2)} MB raw`;
+        document.getElementById('inSampleRate').textContent = `${sr.toLocaleString()} Hz · ${(1000000 / sr).toFixed(2)} µs period · ${(sr / 2 / 1000).toFixed(2)} kHz nyquist`;
+        document.getElementById('inChannels').textContent = `${ch} · ${ch === 1 ? 'mono' : ch === 2 ? 'stereo' : 'multi'} · ${(ch * sr * 4 / 1000).toFixed(1)} kB/s`;
+        
         document.getElementById('statsContainer').style.display = 'block';
     }
 
     updateOutputStats(procTimeSeconds) {
         if (!this.processedBuffer) return;
 
-        // Duration and samples
-        document.getElementById('outDuration').textContent = this.processedBuffer.duration.toFixed(2) + 's';
-        document.getElementById('outSamples').textContent = this.processedBuffer.length.toLocaleString();
+        const outDur = this.processedBuffer.duration;
+        const outSamples = this.processedBuffer.length;
+        const inDur = this.originalBuffer.duration;
+        const inSamples = this.originalBuffer.length;
 
-        // Compression ratio (input / output)
-        const ratio = this.originalBuffer.duration / this.processedBuffer.duration;
-        document.getElementById('compressionRatio').textContent = ratio.toFixed(2) + 'x';
+        // Output Signal verbose format
+        const framesAt100Hz = outDur * 100;
+        document.getElementById('outDuration').textContent = `${outDur.toFixed(2)} s · ${(outDur * 1000).toFixed(0)} ms · ${framesAt100Hz.toFixed(0)} frames @ 100Hz`;
+        document.getElementById('outSamples').textContent = `${outSamples.toLocaleString()} · 0x${outSamples.toString(16).toUpperCase()} · ${(outSamples * 4 / 1024 / 1024).toFixed(2)} MB raw`;
+
+        // Compression ratio
+        const ratio = inDur / outDur;
+        const timeSaved = inDur - outDur;
+        const percentSaved = ((timeSaved / inDur) * 100);
+        document.getElementById('compressionRatio').textContent = `${ratio.toFixed(2)}x · ${percentSaved.toFixed(1)}% reduction · ${(ratio * 100).toFixed(0)}% speed`;
+        document.getElementById('timeSaved').textContent = `${timeSaved.toFixed(2)} s · ${(timeSaved * 1000).toFixed(0)} ms · ${percentSaved.toFixed(1)}% of original`;
 
         // Est WAV size (16-bit mono)
-        const bytes = this.processedBuffer.length * 2;
-        document.getElementById('outSize').textContent = (bytes / 1024).toFixed(1) + ' KB';
+        const bytes = outSamples * 2;
+        document.getElementById('outSize').textContent = `${(bytes / 1024).toFixed(1)} KB · ${(bytes / 1024 / 1024).toFixed(3)} MB · 16-bit mono`;
 
-        // Performance
-        document.getElementById('procTime').textContent = (procTimeSeconds * 1000).toFixed(1) + ' ms';
-        const rtf = this.originalBuffer.duration / procTimeSeconds;
-        document.getElementById('rtFactor').textContent = rtf.toFixed(1) + 'x';
+        // Performance verbose format
+        const procMs = procTimeSeconds * 1000;
+        const rtf = inDur / procTimeSeconds;
+        const rtfPercent = (1 / rtf) * 100;
+        const usPerSample = (procMs * 1000) / inSamples;
+        document.getElementById('procTime').textContent = `${procMs.toFixed(1)} ms · ${procMs.toFixed(3)} s · ${rtfPercent.toFixed(2)}% RT load`;
+        document.getElementById('rtFactor').textContent = `${rtf.toFixed(1)}x · ${(rtf / 60).toFixed(2)} min/min · ${usPerSample.toFixed(3)} µs/sample`;
 
-        // Parameters
-        document.getElementById('paramSpeed').textContent = this.params.speed.toFixed(1) + 'x';
-        document.getElementById('paramNonlinear').textContent = this.params.nonlinear.toFixed(1);
+        // Debug section
+        document.getElementById('inSamplesDbg').textContent = `${inSamples.toLocaleString()} · 0x${inSamples.toString(16).toUpperCase()} · ${(inSamples * 4 / 1024 / 1024).toFixed(2)} MB`;
+        document.getElementById('outSamplesDbg').textContent = `${outSamples.toLocaleString()} · 0x${outSamples.toString(16).toUpperCase()} · ${(outSamples * 4 / 1024 / 1024).toFixed(2)} MB`;
+    }
+
+    updateProcessingStats(speedProfile, sonicStream) {
+        if (!speedProfile || speedProfile.length < 2) return;
+
+        const numPoints = Math.floor(speedProfile.length / 2);
+        const sampleRate = this.originalBuffer.sampleRate;
+
+        // Get Speedy algorithm parameters from WASM
+        const frameRate = sonicStream.getSpeedyFrameRate();  // 100 Hz from WASM
+        const lookaheadFrames = sonicStream.getSpeedyTemporalHysteresisFuture();  // 12 from WASM
+
+        // Calculate FFT size based on sample rate (matches speedy.c formula)
+        const windowSize = Math.round(1.5 * sampleRate / frameRate);
+        const fftSize = 2 * windowSize;
+        const fftWindowMs = (fftSize / sampleRate) * 1000;
+        const fftResolution = sampleRate / fftSize;
+
+        // Frame step and lookahead
+        const frameStepMs = 1000 / frameRate;
+        const lookaheadMs = lookaheadFrames * frameStepMs;
+        const lookaheadSamples = Math.round(lookaheadMs * sampleRate / 1000);
+        
+        // Speed profile analysis
+        let speeds = [];
+        let minSpeed = Infinity;
+        let maxSpeed = -Infinity;
+        let sumSpeed = 0;
+        
+        for (let i = 0; i < numPoints; i++) {
+            const speed = speedProfile[i * 2 + 1];
+            speeds.push(speed);
+            minSpeed = Math.min(minSpeed, speed);
+            maxSpeed = Math.max(maxSpeed, speed);
+            sumSpeed += speed;
+        }
+        
+        const avgSpeed = sumSpeed / numPoints;
+        
+        // Calculate variance
+        let sumSquaredDiff = 0;
+        for (const speed of speeds) {
+            sumSquaredDiff += Math.pow(speed - avgSpeed, 2);
+        }
+        const variance = sumSquaredDiff / numPoints;
+        const stdDev = Math.sqrt(variance);
+        const coeffVar = (stdDev / avgSpeed) * 100;
+        
+        // Update Processing stats
+        document.getElementById('framesAnalyzed').textContent = `${numPoints.toLocaleString()} · ${(numPoints / frameRate).toFixed(2)} s coverage · 100% analyzed`;
+        document.getElementById('fftSize').textContent = `${fftSize} samples · ${fftWindowMs.toFixed(2)} ms window · ${fftResolution.toFixed(2)} Hz resolution`;
+        document.getElementById('frameRate').textContent = `${frameRate} Hz · ${frameStepMs.toFixed(2)} ms step · ~33% overlap`;
+        document.getElementById('lookaheadLatency').textContent = `${lookaheadMs.toFixed(0)} ms · ${lookaheadFrames} frames · ${lookaheadSamples.toLocaleString()} samples`;
+        
+        document.getElementById('paramSpeed').textContent = `${this.params.speed.toFixed(2)}x · ${(100 / this.params.speed).toFixed(1)}% time`;
+        document.getElementById('avgSpeed').textContent = `${avgSpeed.toFixed(2)}x · ${(100 / avgSpeed).toFixed(1)}% time · ${(avgSpeed / this.params.speed * 100).toFixed(1)}% of target`;
+        document.getElementById('speedRange').textContent = `${minSpeed.toFixed(2)}x → ${maxSpeed.toFixed(2)}x · ${(maxSpeed / minSpeed).toFixed(2)}:1 dynamic range`;
+        document.getElementById('speedVariance').textContent = `±${stdDev.toFixed(2)}x · σ=${stdDev.toFixed(3)} · ${coeffVar.toFixed(1)}% CV`;
+        document.getElementById('paramNonlinear').textContent = `${(this.params.nonlinear * 100).toFixed(0)}% · factor ${this.params.nonlinear.toFixed(3)} · ${this.params.nonlinear === 1.0 ? 'full Speedy' : this.params.nonlinear === 0.0 ? 'linear only' : 'blend'}`;
+        document.getElementById('paramFeedback').textContent = `${(this.params.feedback * 100).toFixed(0)}% · ${this.params.feedback.toFixed(3)} · ±${(this.params.feedback * 100).toFixed(0)}% speed adj`;
+        
+        // Drift correction (simulated based on actual vs expected duration)
+        const inDur = this.originalBuffer.duration;
+        const outDur = this.processedBuffer.duration;
+        const expectedDuration = inDur / avgSpeed;
+        const actualDuration = outDur;
+        const driftMs = (actualDuration - expectedDuration) * 1000;
+        const driftFrames = driftMs / frameStepMs;
+        const driftSamples = Math.round(driftMs * sampleRate / 1000);
+        document.getElementById('driftCorrection').textContent = `${(driftMs >= 0 ? '+' : '')}${driftMs.toFixed(1)} ms · ${(driftFrames >= 0 ? '+' : '')}${driftFrames.toFixed(1)} frames · ${(driftSamples >= 0 ? '+' : '')}${driftSamples.toLocaleString()} samples`;
+        
+        // Debug section
+        const spectrogramPoints = numPoints * (fftSize / 2);
+        const spectrogramMB = (spectrogramPoints * 4 / 1024 / 1024).toFixed(2);
+        document.getElementById('spectrogramData').textContent = `${numPoints.toLocaleString()} frames × ${fftSize / 2} bins · ${spectrogramPoints.toLocaleString()} points · ${spectrogramMB} MB`;
+        document.getElementById('speedProfileInfo').textContent = `${numPoints.toLocaleString()} points · ${(numPoints * 8).toLocaleString()} bytes · 2 points/frame`;
+        document.getElementById('wasmHeap').textContent = 'N/A · heap metrics not exposed';
     }
 
     startPlaybackAnimation() {
@@ -859,6 +993,12 @@ class SpeedyDemo {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Helper to format dB values, handling silent audio gracefully
+    formatDb(linearValue) {
+        if (linearValue <= 0) return '-∞';
+        return (20 * Math.log10(linearValue)).toFixed(2);
     }
 }
 

@@ -271,6 +271,54 @@ struct SpeedyStreamWrapper {
         return speedyGetCurrentTime(stream);
     }
 
+    /**
+     * Get the FFT size used for spectral analysis.
+     * @return FFT size in samples
+     */
+    int fftSize() {
+        return speedyFFTSize(stream);
+    }
+
+    /**
+     * Get the frame rate used for analysis.
+     * @return Frame rate in Hz
+     */
+    float frameRate() {
+        return 100.0f;  // kFrameRateHz
+    }
+
+    /**
+     * Get the preemphasis filter coefficient.
+     * @return Preemphasis coefficient (0.97)
+     */
+    float preemphasisCoefficient() {
+        return 0.97f;
+    }
+
+    /**
+     * Get the temporal hysteresis future frame count.
+     * @return Number of future frames for hysteresis
+     */
+    int temporalHysteresisFuture() {
+#ifdef MATCH_MATLAB
+        return 8;  // kTemporalHysteresisFuture
+#else
+        return 12;  // kTemporalHysteresisFuture
+#endif
+    }
+
+    /**
+     * Get the temporal hysteresis past frame count.
+     * @return Number of past frames for hysteresis
+     */
+    int temporalHysteresisPast() {
+#ifdef MATCH_MATLAB
+        return 12;  // kTemporalHysteresisPast
+#else
+        return 8;  // kTemporalHysteresisPast
+#endif
+    }
+
     // Prevent copying
     SpeedyStreamWrapper(const SpeedyStreamWrapper&) = delete;
     SpeedyStreamWrapper& operator=(const SpeedyStreamWrapper&) = delete;
@@ -513,11 +561,11 @@ struct SonicStreamWrapper {
         speedProfile.push_back(static_cast<float>(time));
         speedProfile.push_back(speed);
     }
-    
+
     void setupSpeedCallback() {
         sonicSpeedCallback(stream, speedCallbackStatic);
     }
-    
+
     /**
      * Get the accumulated speed profile and clear the buffer.
      * Returns a Float32Array where [i] = time (frame index), [i+1] = speed.
@@ -526,10 +574,38 @@ struct SonicStreamWrapper {
         if (speedProfile.empty()) {
             return emscripten::val::undefined();
         }
-        
+
         emscripten::val result = floatVectorToJsArray(speedProfile);
         speedProfile.clear();
         return result;
+    }
+
+    /**
+     * Get Speedy frame rate (100 Hz).
+     * @return Frame rate in Hz
+     */
+    float getSpeedyFrameRate() {
+        return 100.0f;  // kFrameRateHz
+    }
+
+    /**
+     * Get Speedy preemphasis filter coefficient.
+     * @return Preemphasis coefficient (0.97)
+     */
+    float getSpeedyPreemphasisCoefficient() {
+        return 0.97f;
+    }
+
+    /**
+     * Get Speedy temporal hysteresis future frame count.
+     * @return Number of future frames for hysteresis
+     */
+    int getSpeedyTemporalHysteresisFuture() {
+#ifdef MATCH_MATLAB
+        return 8;  // kTemporalHysteresisFuture
+#else
+        return 12;  // kTemporalHysteresisFuture
+#endif
     }
 
     // Prevent copying
@@ -575,6 +651,11 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
         .function("computeTension", &SpeedyStreamWrapper::computeTension)
         .function("computeSpeedFromTension", &SpeedyStreamWrapper::computeSpeedFromTension)
         .function("getCurrentTime", &SpeedyStreamWrapper::getCurrentTime)
+        .function("fftSize", &SpeedyStreamWrapper::fftSize)
+        .function("frameRate", &SpeedyStreamWrapper::frameRate)
+        .function("preemphasisCoefficient", &SpeedyStreamWrapper::preemphasisCoefficient)
+        .function("temporalHysteresisFuture", &SpeedyStreamWrapper::temporalHysteresisFuture)
+        .function("temporalHysteresisPast", &SpeedyStreamWrapper::temporalHysteresisPast)
         .function("setPreemphasisFactor", &SpeedyStreamWrapper::setPreemphasisFactor)
         .function("setLowEnergyThresholdScale", &SpeedyStreamWrapper::setLowEnergyThresholdScale)
         .function("setBinThresholdDivisor", &SpeedyStreamWrapper::setBinThresholdDivisor)
@@ -607,6 +688,9 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
         .function("samplesAvailable", &SonicStreamWrapper::samplesAvailable)
         .function("setupSpeedCallback", &SonicStreamWrapper::setupSpeedCallback)
         .function("getSpeedProfile", &SonicStreamWrapper::getSpeedProfile)
+        .function("getSpeedyFrameRate", &SonicStreamWrapper::getSpeedyFrameRate)
+        .function("getSpeedyPreemphasisCoefficient", &SonicStreamWrapper::getSpeedyPreemphasisCoefficient)
+        .function("getSpeedyTemporalHysteresisFuture", &SonicStreamWrapper::getSpeedyTemporalHysteresisFuture)
         ;
 
     // Register std::vector types for return values

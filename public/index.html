@@ -351,6 +351,19 @@
             border-bottom: none;
         }
 
+        .stats-separator {
+            text-align: center;
+            padding: 4px 0;
+            color: var(--text-muted);
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+        }
+
+        .stats-separator::after {
+            content: "· · ·";
+            opacity: 0.5;
+        }
+
         .stats-val {
             color: var(--text-main);
             font-weight: 500;
@@ -714,48 +727,54 @@
                 <div id="statsContainer" class="stats-grid" style="display:none;">
                     <div class="stats-section">
                         <div class="stats-section-header">Input Signal</div>
-                        <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span>
-                        </div>
-                        <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate"
-                                class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span>
-                        </div>
-                        <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span>
-                        </div>
+                        <div class="stats-row"><span>Duration</span> <span id="inDuration" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Samples</span> <span id="inSamples" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Sample Rate</span> <span id="inSampleRate" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Channels</span> <span id="inChannels" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Peak Level</span> <span id="inPeak" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>RMS Level</span> <span id="inRMS" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Crest Factor</span> <span id="inCrest" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Zero Crossings</span> <span id="inZeroX" class="stats-val">-</span></div>
                     </div>
 
                     <div class="stats-section">
-                        <div class="stats-section-header">Performance</div>
-                        <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span>
-                        </div>
-                        <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor"
-                                class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed"
-                                class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Non-linear</span> <span id="paramNonlinear"
-                                class="stats-val">-</span></div>
+                        <div class="stats-section-header">Processing</div>
+                        <div class="stats-row"><span>CPU Time</span> <span id="procTime" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Real-time Factor</span> <span id="rtFactor" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Frames Analyzed</span> <span id="framesAnalyzed" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>FFT Size</span> <span id="fftSize" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Frame Rate</span> <span id="frameRate" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Lookahead Latency</span> <span id="lookaheadLatency" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Target Speed</span> <span id="paramSpeed" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Avg Actual Speed</span> <span id="avgSpeed" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Speed Range</span> <span id="speedRange" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Speed Variance</span> <span id="speedVariance" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Non-linear Blend</span> <span id="paramNonlinear" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Feedback Strength</span> <span id="paramFeedback" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Drift Correction</span> <span id="driftCorrection" class="stats-val">-</span></div>
                     </div>
 
                     <div class="stats-section">
                         <div class="stats-section-header">Output Signal</div>
-                        <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span>
-                        </div>
-                        <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span>
-                        </div>
-                        <div class="stats-row"><span>Compression</span> <span id="compressionRatio"
-                                class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Est. Size</span> <span id="outSize" class="stats-val">-</span>
-                        </div>
+                        <div class="stats-row"><span>Duration</span> <span id="outDuration" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Samples</span> <span id="outSamples" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Compression Ratio</span> <span id="compressionRatio" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Time Saved</span> <span id="timeSaved" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Est. File Size</span> <span id="outSize" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Peak Level</span> <span id="outPeak" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>RMS Level</span> <span id="outRMS" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Crest Factor</span> <span id="outCrest" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Level Change</span> <span id="levelChange" class="stats-val">-</span></div>
                     </div>
 
                     <div class="stats-section">
-                        <div class="stats-section-header">Audio Analysis</div>
-                        <div class="stats-row"><span>In Peak</span> <span id="inPeak" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>In RMS</span> <span id="inRMS" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Out Peak</span> <span id="outPeak" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Out RMS</span> <span id="outRMS" class="stats-val">-</span></div>
-                        <div class="stats-row"><span>Chunks</span> <span id="chunksProcessed" class="stats-val">-</span>
-                        </div>
+                        <div class="stats-section-header">Debug</div>
+                        <div class="stats-row"><span>Input Samples</span> <span id="inSamplesDbg" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Output Samples</span> <span id="outSamplesDbg" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Processing Chunks</span> <span id="chunksProcessed" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Spectrogram Data</span> <span id="spectrogramData" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>Speed Profile</span> <span id="speedProfileInfo" class="stats-val">-</span></div>
+                        <div class="stats-row"><span>WASM Heap</span> <span id="wasmHeap" class="stats-val">-</span></div>
                     </div>
                 </div>
             </div>
