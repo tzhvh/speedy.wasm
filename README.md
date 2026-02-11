@@ -25,6 +25,8 @@ Speedy.wasm brings the Mach1 nonlinear speech speedup algorithm to the browser. 
 - Pre-built ES6 and UMD modules
 - Interactive demo with waveform visualization
 
+**Live demo:** https://tzhvh.github.io/speedy.wasm/
+
 ---
 
 ## Quick Start
