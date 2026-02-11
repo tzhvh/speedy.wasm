@@ -1,8 +1,20 @@
-#*.md
-
 # Documentation files (to avoid SBOM confusion)
 docs/*.md
 
-# Compiled WASM outputs
+# Build directories
 dist/
 build/
+
+# Native build artifacts
+*.o
+*.so
+speedy_wave
+
+# WebAssembly files
+*.wasm
+public/dist/*.wasm
+
+# Dependency build artifacts
+deps/*/build/
+deps/*/*.o
+deps/*/*.so
