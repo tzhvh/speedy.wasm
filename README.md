@@ -59,7 +59,7 @@ stream.enableNonlinearSpeedup(1.0);
 
 ```bash
 python3 -m http.server 8000
-# Open http://localhost:8000/demo/index.html
+# Open http://localhost:8000/index.html
 ```
 
 A local web server is required due to WASM CORS restrictions.
@@ -367,13 +367,58 @@ const speedy = new Module.SpeedyStream(sampleRate);
 
 ## Building from Source
 
+### WebAssembly (Emscripten)
+
 Requires the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html).
 
 ```bash
 git clone --recursive https://github.com/tzhvh0/speedy.wasm.git
 cd speedy.wasm
-make -f Makefile.emscripten all
+
+# Build ES6 module (to dist/)
+make es6
+
+# Build UMD module (to dist/)
+make umd
+
+# Build both ES6 and UMD modules
+make all
+
+# Build for GitHub Pages demo (to public/dist/)
+make public
+
+# Clean WASM build artifacts
+make clean
+```
+
+**Or use the Emscripten makefile directly:**
+```bash
+make -f Makefile.emscripten all    # Build both ES6 and UMD
+make -f Makefile.emscripten clean  # Clean build artifacts
 # Output in dist/
+```
+
+**Note about submodules:** The `deps/` directory uses git submodules. If you didn't clone with `--recursive` or the submodules are missing, run:
+```bash
+git submodule update --init --recursive
+```
+
+### Native Library
+
+For the native C/C++ library and `speedy_wave` command-line tool:
+
+```bash
+# Install dependencies (Ubuntu/Debian)
+sudo apt-get install libfftw3-dev libgmock-dev libgtest-dev libglog-dev
+
+# Build everything (dependencies + speedy)
+make all
+```
+
+**Note:** Submodules are automatically initialized when using `git clone --recursive`. If you didn't use `--recursive`, run:
+```bash
+git submodule update --init --recursive
+make all
 ```
 
 ---
