@@ -10,6 +10,14 @@ An independent fork of Google's [speedy](https://github.com/google/speedy) algor
 
 Speedy.wasm brings the Mach1 nonlinear speech speedup algorithm to the browser. Instead of compressing all audio equally (standard 2x playback), it compresses vowels and unstressed portions more than consonants — mimicking how humans naturally speak faster and maintaining higher intelligibility at speed.
 
+## Preview
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/dark_wav.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/light_wav.png">
+  <img alt="Speedy.wasm waveform visualization" src="docs/light_wav.png">
+</picture>
+
 **Features:**
 - WebAssembly bindings for `SpeedyStream` (analysis) and `SonicStream` (time-scale modification)
 - Zero-copy architecture with direct WASM heap access
