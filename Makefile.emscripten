@@ -8,6 +8,8 @@ EMPP = em++
 # === Directories ===
 BUILD_DIR = build
 DIST_DIR = dist
+PUBLIC_DIR = public
+PUBLIC_DIST_DIR = $(PUBLIC_DIR)/dist
 SONIC_DIR = deps/sonic
 KISS_DIR = deps/kissfft
 DOCS_DIR = docs
@@ -50,14 +52,15 @@ CFLAGS_UMD = $(CFLAGS_COMMON) \
 	-s ENVIRONMENT=web,worker,node
 
 # === Targets ===
-.PHONY: all clean es6 umd deps prepare
+.PHONY: all clean es6 umd deps prepare public gh-pages
 
 all: es6 umd
 
-# Create dist directory
+# Create dist directories
 prepare:
 	@mkdir -p $(BUILD_DIR)
 	@mkdir -p $(DIST_DIR)
+	@mkdir -p $(PUBLIC_DIST_DIR)
 	@mkdir -p $(DOCS_DIR)
 
 # Build ES6 module
@@ -76,6 +79,19 @@ $(DIST_DIR)/speedy.umd.js: $(ALL_SOURCES) speedy.h sonic2.h
 	@echo "Building UMD module..."
 	$(EMPP) $(CFLAGS_UMD) $(ALL_SOURCES) -o $@
 
+# Public ES6 module (for GitHub Pages)
+$(PUBLIC_DIST_DIR)/speedy.js: $(ALL_SOURCES) speedy.h sonic2.h
+	@echo "Building ES6 module for GitHub Pages..."
+	@mkdir -p $(PUBLIC_DIST_DIR)
+	$(EMPP) $(CFLAGS_ES6) $(ALL_SOURCES) -o $@
+
+# Public target (builds demo-ready version)
+public: $(PUBLIC_DIST_DIR)/speedy.js
+
+# GitHub Pages convenience target
+gh-pages: public
+	@echo "GitHub Pages build complete: $(PUBLIC_DIST_DIR)/speedy.js"
+
 # Initialize submodules (if not already done)
 deps:
 	@if [ ! -d "$(SONIC_DIR)" ]; then \
@@ -90,6 +106,7 @@ deps:
 clean:
 	rm -rf $(BUILD_DIR) $(DIST_DIR)
 	rm -f *.o
+	rm -f $(PUBLIC_DIST_DIR)/speedy.js $(PUBLIC_DIST_DIR)/speedy.wasm
 
 # Show build info
 info:
@@ -99,6 +116,7 @@ info:
 	@echo "KissFFT Directory: $(KISS_DIR)"
 	@echo "Build Directory: $(BUILD_DIR)"
 	@echo "Dist Directory: $(DIST_DIR)"
+	@echo "Public Dist Directory: $(PUBLIC_DIST_DIR)"
 	@echo ""
 	@echo "Source Files:"
 	@echo "  Speedy: $(SPEEDY_SOURCES)"
@@ -107,8 +125,10 @@ info:
 	@echo ""
 	@echo "Targets:"
 	@echo "  make all       - Build both ES6 and UMD modules"
-	@echo "  make es6       - Build ES6 module only"
-	@echo "  make umd       - Build UMD module only"
+	@echo "  make es6       - Build ES6 module only (to dist/)"
+	@echo "  make umd       - Build UMD module only (to dist/)"
+	@echo "  make public    - Build ES6 module for GitHub Pages (to public/dist/)"
+	@echo "  make gh-pages  - Alias for 'make public' with completion message"
 	@echo "  make clean     - Clean build artifacts"
 	@echo "  make deps      - Initialize submodules"
 	@echo "  make info      - Show this information"
