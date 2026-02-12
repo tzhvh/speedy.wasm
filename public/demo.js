@@ -44,6 +44,14 @@ class SpeedyDemo {
             speed: 2.0,
             nonlinear: 1.0,
             feedback: 0.1,
+            preemphasis: 0.97,
+            tensionEnergyWeight: 0.5,
+            tensionSpeechWeight: 0.25,
+            tensionEnergyOffset: 0.7,
+            tensionSpeechOffset: 1.0,
+            binThresholdDivisor: 100,
+            lowEnergyScale: 0.04,
+            speechChangeCapMultiplier: 4.0,
             linearRefEnabled: false
         };
 
@@ -67,7 +75,19 @@ class SpeedyDemo {
 
     bindEvents() {
         // Parameter inputs
-        ['speed', 'nonlinear', 'feedback'].forEach(id => {
+        [
+            'speed',
+            'nonlinear',
+            'feedback',
+            'preemphasis',
+            'tensionEnergyWeight',
+            'tensionSpeechWeight',
+            'tensionEnergyOffset',
+            'tensionSpeechOffset',
+            'binThresholdDivisor',
+            'lowEnergyScale',
+            'speechChangeCapMultiplier'
+        ].forEach(id => {
             const el = document.getElementById(id);
             const valEl = document.getElementById(id + 'Val');
             el.addEventListener('input', (e) => {
@@ -585,6 +605,20 @@ class SpeedyDemo {
             sonicProcessed.setSpeed(this.params.speed);
             sonicProcessed.enableNonlinearSpeedup(this.params.nonlinear);
             sonicProcessed.setDurationFeedbackStrength(this.params.feedback);
+            sonicProcessed.setSpeedyPreemphasisFactor(this.params.preemphasis);
+            sonicProcessed.setSpeedyTensionWeights(
+                this.params.tensionEnergyWeight,
+                this.params.tensionSpeechWeight
+            );
+            sonicProcessed.setSpeedyTensionOffsets(
+                this.params.tensionEnergyOffset,
+                this.params.tensionSpeechOffset
+            );
+            sonicProcessed.setSpeedyBinThresholdDivisor(this.params.binThresholdDivisor);
+            sonicProcessed.setSpeedyLowEnergyThresholdScale(this.params.lowEnergyScale);
+            sonicProcessed.setSpeedySpeechChangeCapMultiplier(
+                this.params.speechChangeCapMultiplier
+            );
             sonicProcessed.setupSpeedCallback();
 
             // Linear stream (nonlinear=0)
@@ -594,6 +628,20 @@ class SpeedyDemo {
                 sonicLinear.setSpeed(this.params.speed);
                 sonicLinear.enableNonlinearSpeedup(0);
                 sonicLinear.setDurationFeedbackStrength(this.params.feedback);
+                sonicLinear.setSpeedyPreemphasisFactor(this.params.preemphasis);
+                sonicLinear.setSpeedyTensionWeights(
+                    this.params.tensionEnergyWeight,
+                    this.params.tensionSpeechWeight
+                );
+                sonicLinear.setSpeedyTensionOffsets(
+                    this.params.tensionEnergyOffset,
+                    this.params.tensionSpeechOffset
+                );
+                sonicLinear.setSpeedyBinThresholdDivisor(this.params.binThresholdDivisor);
+                sonicLinear.setSpeedyLowEnergyThresholdScale(this.params.lowEnergyScale);
+                sonicLinear.setSpeedySpeechChangeCapMultiplier(
+                    this.params.speechChangeCapMultiplier
+                );
                 sonicLinear.setupSpeedCallback();
             }
 

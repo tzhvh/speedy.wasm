@@ -152,6 +152,14 @@ struct speedyStreamStruct {
   float *hysteresis_buffer;
   int64_t hysteresis_index;    /* So it never wraps, even with long input */
   float preemph_state;
+  float preemphasis_factor;
+  float low_energy_threshold_scale;
+  float bin_threshold_divisor;
+  float tension_weight_energy;
+  float tension_weight_speech;
+  float tension_offset_energy;
+  float tension_offset_speech;
+  float speech_change_cap_multiplier;
   /* The following four variables are means over a long utterance and are used
    * to normalize the calculations below.
    */
@@ -215,6 +223,14 @@ speedyStream speedyCreateStream(int sample_rate) {
   stream->sample_rate = sample_rate;
   stream->current_time = 0;
   stream->preemph_state = 0.0;
+  stream->preemphasis_factor = 0.97f;
+  stream->low_energy_threshold_scale = 0.04f;
+  stream->bin_threshold_divisor = 100.0f;
+  stream->tension_weight_energy = 0.5f;
+  stream->tension_weight_speech = 0.25f;
+  stream->tension_offset_energy = 0.7f;
+  stream->tension_offset_speech = 1.0f;
+  stream->speech_change_cap_multiplier = 4.0f;
   stream->hysteresis_index = 0;
   stream->input = (float *) malloc(sizeof(float) * stream->window_size);
   stream->hysteresis_buffer = (float *) malloc(sizeof(float) *
@@ -419,7 +435,7 @@ void speedyPreemphasisFilter(speedyStream stream, float* input, int length) {
   assert(input);
   for (i=0; i < length; i++) {
     float last_sample = input[i];
-    input[i] = 1.0*input[i] - 0.97*stream->preemph_state;
+    input[i] = 1.0*input[i] - stream->preemphasis_factor*stream->preemph_state;
     stream->preemph_state = last_sample;
   }
 }
@@ -679,7 +695,8 @@ void speedyComputeSpectralDifference(speedyStream stream,
   /* Bug: This probably should be based on energy_local, not hysteresis.  Bug
    * in the Matlab code too.
    */
-  s_low_energy_threshold = 0.04*stream->max_energy_hysteresis;
+  s_low_energy_threshold = stream->low_energy_threshold_scale *
+                           stream->max_energy_hysteresis;
   s_low_energy_frame = s_spectrogram_energy <= s_low_energy_threshold;
   s_time_spectral = at_time;
   if (s_low_energy_frame) {
@@ -706,7 +723,7 @@ void speedyComputeSpectralDifference(speedyStream stream,
   for (i=1; i < stream->fft_size/2; i++) {
     bin_threshold = fmax(bin_threshold, spectrogram[i]);
   }
-  bin_threshold /= 100.0;                         /* 40dB below the peak. */
+  bin_threshold /= stream->bin_threshold_divisor;
 
   s_local_spectral_difference = 0.0;
   const float eps = 2.2204e-16;        /* Smallest increment around 1.0 */
@@ -725,7 +742,8 @@ void speedyComputeSpectralDifference(speedyStream stream,
   s_relative_spectral_difference = s_emphasis_weighted_local_difference /
       (s_emphasis_weighted_lpf + 0.01*stream->mean_emphasis_weighted_lpf);
   s_speech_changes = fmin(s_relative_spectral_difference,
-                          4*stream->mean_relative_spectral_difference);
+                          stream->speech_change_cap_multiplier *
+                          stream->mean_relative_spectral_difference);
 }
 
 /*****************************************************************************
@@ -751,7 +769,10 @@ int64_t speedyGetCurrentTime(speedyStream stream) {
 
 int speedyComputeTension(speedyStream stream, int64_t at_time, float* tension) {
   assert(tension);
-  float a = 1/2.0, b=1/4.0, M_E = 0.7, M_S = 1.0;
+  float a = stream->tension_weight_energy;
+  float b = stream->tension_weight_speech;
+  float M_E = stream->tension_offset_energy;
+  float M_S = stream->tension_offset_speech;
   if (at_time + kTemporalHysteresisFuture <= stream->current_time) {
     float *current_spectrogram = speedyGetSpectrogramAtTime(stream, at_time);
     float *previous_spectrogram = speedyGetSpectrogramAtTime(stream, at_time-1);
@@ -785,4 +806,38 @@ float speedyComputeSpeedFromTension(float tension, float R_g,
   stream->desired_duration += frame_duration/R_g;
 
   return requested_speed;
+}
+
+void speedySetPreemphasisFactor(speedyStream stream, float factor) {
+  assert(stream);
+  stream->preemphasis_factor = factor;
+}
+
+void speedySetLowEnergyThresholdScale(speedyStream stream, float scale) {
+  assert(stream);
+  stream->low_energy_threshold_scale = scale;
+}
+
+void speedySetBinThresholdDivisor(speedyStream stream, float divisor) {
+  assert(stream);
+  stream->bin_threshold_divisor = divisor;
+}
+
+void speedySetTensionWeights(speedyStream stream, float energy_weight,
+                             float speech_weight) {
+  assert(stream);
+  stream->tension_weight_energy = energy_weight;
+  stream->tension_weight_speech = speech_weight;
+}
+
+void speedySetTensionOffsets(speedyStream stream, float energy_offset,
+                             float speech_offset) {
+  assert(stream);
+  stream->tension_offset_energy = energy_offset;
+  stream->tension_offset_speech = speech_offset;
+}
+
+void speedySetSpeechChangeCapMultiplier(speedyStream stream, float multiplier) {
+  assert(stream);
+  stream->speech_change_cap_multiplier = multiplier;
 }

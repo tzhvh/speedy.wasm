@@ -239,6 +239,30 @@ struct SpeedyStreamWrapper {
         return speedyComputeSpeedFromTension(tension, R_g, duration_feedback_strength, stream);
     }
 
+    void setPreemphasisFactor(float factor) {
+        speedySetPreemphasisFactor(stream, factor);
+    }
+
+    void setLowEnergyThresholdScale(float scale) {
+        speedySetLowEnergyThresholdScale(stream, scale);
+    }
+
+    void setBinThresholdDivisor(float divisor) {
+        speedySetBinThresholdDivisor(stream, divisor);
+    }
+
+    void setTensionWeights(float energy_weight, float speech_weight) {
+        speedySetTensionWeights(stream, energy_weight, speech_weight);
+    }
+
+    void setTensionOffsets(float energy_offset, float speech_offset) {
+        speedySetTensionOffsets(stream, energy_offset, speech_offset);
+    }
+
+    void setSpeechChangeCapMultiplier(float multiplier) {
+        speedySetSpeechChangeCapMultiplier(stream, multiplier);
+    }
+
     /**
      * Get the current frame time in the stream.
      * @return Current frame index
@@ -442,6 +466,30 @@ struct SonicStreamWrapper {
         sonicSetDurationFeedbackStrength(stream, factor);
     }
 
+    void setSpeedyPreemphasisFactor(float factor) {
+        sonicSetSpeedyPreemphasisFactor(stream, factor);
+    }
+
+    void setSpeedyLowEnergyThresholdScale(float scale) {
+        sonicSetSpeedyLowEnergyThresholdScale(stream, scale);
+    }
+
+    void setSpeedyBinThresholdDivisor(float divisor) {
+        sonicSetSpeedyBinThresholdDivisor(stream, divisor);
+    }
+
+    void setSpeedyTensionWeights(float energy_weight, float speech_weight) {
+        sonicSetSpeedyTensionWeights(stream, energy_weight, speech_weight);
+    }
+
+    void setSpeedyTensionOffsets(float energy_offset, float speech_offset) {
+        sonicSetSpeedyTensionOffsets(stream, energy_offset, speech_offset);
+    }
+
+    void setSpeedySpeechChangeCapMultiplier(float multiplier) {
+        sonicSetSpeedySpeechChangeCapMultiplier(stream, multiplier);
+    }
+
     /**
      * Get the number of samples available to read.
      * @return Number of samples available (per channel)
@@ -527,6 +575,12 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
         .function("computeTension", &SpeedyStreamWrapper::computeTension)
         .function("computeSpeedFromTension", &SpeedyStreamWrapper::computeSpeedFromTension)
         .function("getCurrentTime", &SpeedyStreamWrapper::getCurrentTime)
+        .function("setPreemphasisFactor", &SpeedyStreamWrapper::setPreemphasisFactor)
+        .function("setLowEnergyThresholdScale", &SpeedyStreamWrapper::setLowEnergyThresholdScale)
+        .function("setBinThresholdDivisor", &SpeedyStreamWrapper::setBinThresholdDivisor)
+        .function("setTensionWeights", &SpeedyStreamWrapper::setTensionWeights)
+        .function("setTensionOffsets", &SpeedyStreamWrapper::setTensionOffsets)
+        .function("setSpeechChangeCapMultiplier", &SpeedyStreamWrapper::setSpeechChangeCapMultiplier)
         ;
 
     // Bind SonicStreamWrapper as SonicStream
@@ -544,6 +598,12 @@ EMSCRIPTEN_BINDINGS(speedy_module) {
         .function("setRate", &SonicStreamWrapper::setRate)
         .function("enableNonlinearSpeedup", &SonicStreamWrapper::enableNonlinearSpeedup)
         .function("setDurationFeedbackStrength", &SonicStreamWrapper::setDurationFeedbackStrength)
+        .function("setSpeedyPreemphasisFactor", &SonicStreamWrapper::setSpeedyPreemphasisFactor)
+        .function("setSpeedyLowEnergyThresholdScale", &SonicStreamWrapper::setSpeedyLowEnergyThresholdScale)
+        .function("setSpeedyBinThresholdDivisor", &SonicStreamWrapper::setSpeedyBinThresholdDivisor)
+        .function("setSpeedyTensionWeights", &SonicStreamWrapper::setSpeedyTensionWeights)
+        .function("setSpeedyTensionOffsets", &SonicStreamWrapper::setSpeedyTensionOffsets)
+        .function("setSpeedySpeechChangeCapMultiplier", &SonicStreamWrapper::setSpeedySpeechChangeCapMultiplier)
         .function("samplesAvailable", &SonicStreamWrapper::samplesAvailable)
         .function("setupSpeedCallback", &SonicStreamWrapper::setupSpeedCallback)
         .function("getSpeedProfile", &SonicStreamWrapper::getSpeedProfile)

@@ -584,7 +584,7 @@
                     Speed Multiplier
                     <span id="speedVal">2.0x</span>
                 </label>
-                <input type="range" id="speed" min="0.5" max="3.0" step="0.1" value="2.0">
+                <input type="range" id="speed" min="0.5" max="6.0" step="0.1" value="2.0">
             </div>
 
             <div class="form-group">
@@ -604,11 +604,67 @@
             </div>
 
             <div class="form-group" style="border-bottom: none;">
-                <label for="feedback">
-                    Feedback Strength
-                    <span id="feedbackVal">0.1</span>
+                <label for="preemphasis">
+                    Preemphasis
+                    <span id="preemphasisVal">0.97</span>
                 </label>
-                <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
+                <input type="range" id="preemphasis" min="0.9" max="1.0" step="0.005" value="0.97">
+            </div>
+
+            <div class="form-group">
+                <label for="tensionEnergyWeight">
+                    Tension Energy Weight
+                    <span id="tensionEnergyWeightVal">0.5</span>
+                </label>
+                <input type="range" id="tensionEnergyWeight" min="0.0" max="1.0" step="0.05" value="0.5">
+            </div>
+
+            <div class="form-group">
+                <label for="tensionSpeechWeight">
+                    Tension Speech Weight
+                    <span id="tensionSpeechWeightVal">0.25</span>
+                </label>
+                <input type="range" id="tensionSpeechWeight" min="0.0" max="1.0" step="0.05" value="0.25">
+            </div>
+
+            <div class="form-group">
+                <label for="tensionEnergyOffset">
+                    Tension Energy Offset
+                    <span id="tensionEnergyOffsetVal">0.7</span>
+                </label>
+                <input type="range" id="tensionEnergyOffset" min="0.0" max="2.0" step="0.05" value="0.7">
+            </div>
+
+            <div class="form-group">
+                <label for="tensionSpeechOffset">
+                    Tension Speech Offset
+                    <span id="tensionSpeechOffsetVal">1.0</span>
+                </label>
+                <input type="range" id="tensionSpeechOffset" min="0.0" max="2.0" step="0.05" value="1.0">
+            </div>
+
+            <div class="form-group">
+                <label for="binThresholdDivisor">
+                    Spectral Bin Divisor
+                    <span id="binThresholdDivisorVal">100</span>
+                </label>
+                <input type="range" id="binThresholdDivisor" min="20" max="200" step="5" value="100">
+            </div>
+
+            <div class="form-group">
+                <label for="lowEnergyScale">
+                    Low Energy Scale
+                    <span id="lowEnergyScaleVal">0.04</span>
+                </label>
+                <input type="range" id="lowEnergyScale" min="0.0" max="0.2" step="0.005" value="0.04">
+            </div>
+
+            <div class="form-group" style="border-bottom: none;">
+                <label for="speechChangeCapMultiplier">
+                    Speech Change Cap
+                    <span id="speechChangeCapMultiplierVal">4</span>
+                </label>
+                <input type="range" id="speechChangeCapMultiplier" min="1.0" max="10.0" step="0.5" value="4.0">
             </div>
 
             <div style="border-top: 1px solid var(--border-color);">

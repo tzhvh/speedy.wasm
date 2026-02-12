@@ -85,6 +85,14 @@ float speedyComputeSpeedFromTension(float tension, float R_g,
                                     float duration_feedback_strength,
                                     speedyStream stream);
 int64_t speedyGetCurrentTime(speedyStream stream);
+void speedySetPreemphasisFactor(speedyStream stream, float factor);
+void speedySetLowEnergyThresholdScale(speedyStream stream, float scale);
+void speedySetBinThresholdDivisor(speedyStream stream, float divisor);
+void speedySetTensionWeights(speedyStream stream, float energy_weight,
+                             float speech_weight);
+void speedySetTensionOffsets(speedyStream stream, float energy_offset,
+                             float speech_offset);
+void speedySetSpeechChangeCapMultiplier(speedyStream stream, float multiplier);
 
 /* The following functions are NOT designed to be user callable.  They are
  * defined here to make the internals of this function available for testing.

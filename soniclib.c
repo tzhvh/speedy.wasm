@@ -182,6 +182,56 @@ void sonicSetSpeed(sonicStream mySonicStream, float rate) {
   sonicIntSetSpeed(mySonicStream, rate);
 }
 
+void sonicSetSpeedyPreemphasisFactor(sonicStream mySonicStream, float factor) {
+  assert(mySonicStream);
+  speedyConnection mySpeedyConnector =
+      (speedyConnection)sonicIntGetUserData(mySonicStream);
+  speedySetPreemphasisFactor(mySpeedyConnector->mySpeedyStream, factor);
+}
+
+void sonicSetSpeedyLowEnergyThresholdScale(sonicStream mySonicStream,
+                                           float scale) {
+  assert(mySonicStream);
+  speedyConnection mySpeedyConnector =
+      (speedyConnection)sonicIntGetUserData(mySonicStream);
+  speedySetLowEnergyThresholdScale(mySpeedyConnector->mySpeedyStream, scale);
+}
+
+void sonicSetSpeedyBinThresholdDivisor(sonicStream mySonicStream,
+                                       float divisor) {
+  assert(mySonicStream);
+  speedyConnection mySpeedyConnector =
+      (speedyConnection)sonicIntGetUserData(mySonicStream);
+  speedySetBinThresholdDivisor(mySpeedyConnector->mySpeedyStream, divisor);
+}
+
+void sonicSetSpeedyTensionWeights(sonicStream mySonicStream,
+                                  float energy_weight, float speech_weight) {
+  assert(mySonicStream);
+  speedyConnection mySpeedyConnector =
+      (speedyConnection)sonicIntGetUserData(mySonicStream);
+  speedySetTensionWeights(mySpeedyConnector->mySpeedyStream,
+                          energy_weight, speech_weight);
+}
+
+void sonicSetSpeedyTensionOffsets(sonicStream mySonicStream,
+                                  float energy_offset, float speech_offset) {
+  assert(mySonicStream);
+  speedyConnection mySpeedyConnector =
+      (speedyConnection)sonicIntGetUserData(mySonicStream);
+  speedySetTensionOffsets(mySpeedyConnector->mySpeedyStream,
+                          energy_offset, speech_offset);
+}
+
+void sonicSetSpeedySpeechChangeCapMultiplier(sonicStream mySonicStream,
+                                             float multiplier) {
+  assert(mySonicStream);
+  speedyConnection mySpeedyConnector =
+      (speedyConnection)sonicIntGetUserData(mySonicStream);
+  speedySetSpeechChangeCapMultiplier(mySpeedyConnector->mySpeedyStream,
+                                     multiplier);
+}
+
 
 int sonicAllocateBuffers(sonicStream mySonicStream, int sampleCount){
   /* TODO(malcolmslaney): Need to check if we have already allocated this space,

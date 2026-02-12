@@ -90,6 +90,17 @@ void sonicEnableNonlinearSpeedup(sonicStream mySonicStream,
  * be a good compromise, providing a .1 speedup for every 1s of excess duration.
  */
 void sonicSetDurationFeedbackStrength(sonicStream mySonicStream, float factor);
+void sonicSetSpeedyPreemphasisFactor(sonicStream mySonicStream, float factor);
+void sonicSetSpeedyLowEnergyThresholdScale(sonicStream mySonicStream,
+                                           float scale);
+void sonicSetSpeedyBinThresholdDivisor(sonicStream mySonicStream,
+                                       float divisor);
+void sonicSetSpeedyTensionWeights(sonicStream mySonicStream,
+                                  float energy_weight, float speech_weight);
+void sonicSetSpeedyTensionOffsets(sonicStream mySonicStream,
+                                  float energy_offset, float speech_offset);
+void sonicSetSpeedySpeechChangeCapMultiplier(sonicStream mySonicStream,
+                                             float multiplier);
 
 /* Return the size of the internal buffers.  This is needed for the callback
  * functions, which return time in buffer counts.
