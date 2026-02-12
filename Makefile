@@ -5,17 +5,16 @@
 #   sudo apt-get install libfftw3-dev libgmock-dev libgtest-dev libglog-dev
 
 SONIC_DIR=deps/sonic
-FFTW_DIR=deps/fftw
 KISS_DIR=deps/kissfft
 
 CC=gcc
 CPLUSPLUS=g++
-CFLAGS=-g -DFFTW -fPIC -I$(SONIC_DIR) -L$(SONIC_DIR) -I$(FFTW_DIR)
+CFLAGS=-g -DFFTW -fPIC -I$(SONIC_DIR) -L$(SONIC_DIR)
 
 all: deps libspeedy.so speedy_wave wasm-all wasm-gh-pages
 
 deps:
-	$(MAKE) -C $(SONIC_DIR) libsonic_internal.so
+	$(MAKE) -C $(SONIC_DIR)
 
 speedy_wave: speedy_wave.cc libspeedy.so $(SONIC_DIR)/libsonic_internal.so
 	$(CPLUSPLUS) $(CFLAGS) speedy_wave.cc libspeedy.so $(SONIC_DIR)/libsonic_internal.so -lc -lfftw3 -o speedy_wave
@@ -39,7 +38,7 @@ test: kiss_fft_test dynamic_time_warping_test sonic_classic_test sonic_test spee
 
 # === WebAssembly / Emscripten Targets ===
 # These delegate to Makefile.emscripten for building WASM modules
-WASM_TARGETS = es6 umd wasm-all wasm-clean wasm-public wasm-gh-pages wasm-deps
+WASM_TARGETS = es6 umd wasm-all wasm-clean wasm-public wasm-gh-pages wasm-gh-pages-deploy wasm-deps
 
 .PHONY: $(WASM_TARGETS)
 
@@ -50,6 +49,8 @@ $(WASM_TARGETS):
 wasm-all: es6 umd
 wasm-clean: clean
 wasm-deps: deps
+gh-pages: wasm-gh-pages
+gh-pages-deploy: wasm-gh-pages-deploy
 
 kiss_fft_test: kiss_fft_test.cc
 	g++ -DKISS_FFT -I$(KISS_DIR) kiss_fft_test.cc $(KISS_DIR)/libkissfft-float.so \

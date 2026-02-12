@@ -1,4 +1,4 @@
-import initSpeedy from './dist/speedy.js';
+import initSpeedy from './speedy.js';
 import { WaveformViewer } from './waveform.js';
 
 class SpeedyDemo {

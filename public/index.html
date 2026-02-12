@@ -519,6 +519,20 @@
             color: var(--wave-playhead);
             font-weight: 600;
         }
+
+        #loadExampleLink:hover {
+            color: var(--wave-linear);
+            border-bottom-color: var(--wave-linear);
+        }
+
+        .github-link:hover {
+            color: var(--wave-linear);
+            border-bottom-color: var(--wave-linear);
+        }
+
+        #loadExampleLink {
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -530,6 +544,25 @@
                 <div>
                     <h1>Configuration</h1>
                     <p>Speedy WASM Parameters</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <a id="loadExampleLink" href="#" style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text-muted); text-decoration: none; border-bottom: 1px dotted var(--text-muted); padding-bottom: 2px; transition: all 0.2s; font-family: 'SF Mono', monospace; letter-spacing: 0.02em;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12"></line>
+                        </svg>
+                        LOAD EXAMPLE
+                    </a>
+                    <label for="linearRef" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Linear Ref</span>
+                        <div style="position: relative; width: 32px; height: 16px;">
+                            <input type="checkbox" id="linearRef" style="position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; margin: 0;">
+                            <div id="linearRefTrack" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--btn-secondary-bg); border-radius: 8px; transition: background 0.2s; border: 1px solid var(--border-color);">
+                                <div id="linearRefThumb" style="position: absolute; top: 1px; left: 1px; width: 12px; height: 12px; background: var(--text-muted); border-radius: 50%; transition: all 0.2s;"></div>
+                            </div>
+                        </div>
+                    </label>
                 </div>
             </div>
 
@@ -570,11 +603,12 @@
                 <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
             </div>
 
-            <div class="form-group">
-                <label for="linearRef" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-                    <input type="checkbox" id="linearRef" style="width: 14px; height: 14px; cursor: pointer;">
-                    <span style="font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; font-family: 'SF Mono', monospace; letter-spacing: 0.05em;">Enable Linear Reference</span>
+            <div class="form-group" style="border-bottom: none;">
+                <label for="feedback">
+                    Feedback Strength
+                    <span id="feedbackVal">0.1</span>
                 </label>
+                <input type="range" id="feedback" min="0.0" max="0.5" step="0.05" value="0.1">
             </div>
 
             <div style="border-top: 1px solid var(--border-color);">
@@ -601,6 +635,17 @@
                     <h1>Statistics</h1>
                     <p>Signal Analysis & Metrics</p>
                 </div>
+                <a href="https://github.com/tzhvh/speedy.wasm" class="github-link" aria-label="View source on GitHub" style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text-muted); text-decoration: none; border-bottom: 1px dotted var(--text-muted); padding-bottom: 2px; transition: all 0.2s; font-family: 'SF Mono', monospace; letter-spacing: 0.02em;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.041-1.416-4.041-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    SPEEDY.WASM
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </a>
             </div>
 
             <div id="statsScrollContainer" class="stats-scroll-container">
@@ -800,6 +845,10 @@
         const browseBtn = document.getElementById('browseBtn');
         const fileInput = document.getElementById('audioFile');
         const nameDisplay = document.getElementById('fileNameDisplay');
+        const linearRef = document.getElementById('linearRef');
+        const linearRefTrack = document.getElementById('linearRefTrack');
+        const linearRefThumb = document.getElementById('linearRefThumb');
+        const loadExampleLink = document.getElementById('loadExampleLink');
 
         const openFile = () => fileInput.click();
         browseBtn.addEventListener('click', openFile);
@@ -811,6 +860,52 @@
                 nameDisplay.style.color = 'var(--text-main)';
             } else {
                 nameDisplay.value = '';
+            }
+        });
+
+        // Toggle Switch Visual State
+        const updateToggleState = (enabled) => {
+            if (enabled) {
+                linearRefTrack.style.background = 'var(--wave-linear)';
+                linearRefTrack.style.borderColor = 'var(--wave-linear)';
+                linearRefThumb.style.left = '17px';
+                linearRefThumb.style.background = '#000';
+            } else {
+                linearRefTrack.style.background = 'var(--btn-secondary-bg)';
+                linearRefTrack.style.borderColor = 'var(--border-color)';
+                linearRefThumb.style.left = '1px';
+                linearRefThumb.style.background = 'var(--text-muted)';
+            }
+        };
+
+        linearRef.addEventListener('change', () => updateToggleState(linearRef.checked));
+        updateToggleState(linearRef.checked);
+
+        // Load Example Link
+        loadExampleLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch('tapestry.wav');
+                if (!response.ok) throw new Error('Failed to load example file');
+                const blob = await response.blob();
+                const file = new File([blob], 'tapestry.wav', { type: 'audio/wav' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change'));
+                document.getElementById('statusLog').innerHTML = `
+                    <div class="log-entry">
+                        <span class="log-time">SYS</span>
+                        <span class="log-msg">Loaded example: tapestry.wav</span>
+                    </div>
+                `;
+            } catch (err) {
+                document.getElementById('statusLog').innerHTML = `
+                    <div class="log-entry">
+                        <span class="log-time">ERR</span>
+                        <span class="log-msg">Failed to load example: ${err.message}</span>
+                    </div>
+                `;
             }
         });
 

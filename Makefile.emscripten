@@ -9,7 +9,7 @@ EMPP = em++
 BUILD_DIR = build
 DIST_DIR = dist
 PUBLIC_DIR = public
-PUBLIC_DIST_DIR = $(PUBLIC_DIR)/dist
+PUBLIC_DIST_DIR = $(PUBLIC_DIR)
 SONIC_DIR = deps/sonic
 KISS_DIR = deps/kissfft
 DOCS_DIR = docs
@@ -52,7 +52,7 @@ CFLAGS_UMD = $(CFLAGS_COMMON) \
 	-s ENVIRONMENT=web,worker,node
 
 # === Targets ===
-.PHONY: all clean es6 umd deps prepare public gh-pages
+.PHONY: all clean es6 umd deps prepare public gh-pages gh-pages-deploy gh-pages-publish
 
 all: es6 umd
 
@@ -80,17 +80,26 @@ $(DIST_DIR)/speedy.umd.js: $(ALL_SOURCES) speedy.h sonic2.h
 	$(EMPP) $(CFLAGS_UMD) $(ALL_SOURCES) -o $@
 
 # Public ES6 module (for GitHub Pages)
-$(PUBLIC_DIST_DIR)/speedy.js: $(ALL_SOURCES) speedy.h sonic2.h
+# Build both .js and .wasm - emscripten automatically produces both
+$(PUBLIC_DIST_DIR)/speedy.js $(PUBLIC_DIST_DIR)/speedy.wasm: $(ALL_SOURCES) speedy.h sonic2.h
 	@echo "Building ES6 module for GitHub Pages..."
 	@mkdir -p $(PUBLIC_DIST_DIR)
-	$(EMPP) $(CFLAGS_ES6) $(ALL_SOURCES) -o $@
+	$(EMPP) $(CFLAGS_ES6) $(ALL_SOURCES) -o $(PUBLIC_DIST_DIR)/speedy.js
 
 # Public target (builds demo-ready version)
-public: $(PUBLIC_DIST_DIR)/speedy.js
+public: $(PUBLIC_DIST_DIR)/speedy.js $(PUBLIC_DIST_DIR)/speedy.wasm
 
 # GitHub Pages convenience target
 gh-pages: public
 	@echo "GitHub Pages build complete: $(PUBLIC_DIST_DIR)/speedy.js"
+
+# Deploy to GitHub Pages (pushes public/ directory to gh-pages branch)
+gh-pages-deploy: public
+	@echo "Deploying to GitHub Pages..."
+	git subtree push --prefix public origin gh-pages
+
+# Convenience target that builds AND deploys
+gh-pages-publish: gh-pages-deploy
 
 # Initialize submodules (if not already done)
 deps:
@@ -127,8 +136,10 @@ info:
 	@echo "  make all       - Build both ES6 and UMD modules"
 	@echo "  make es6       - Build ES6 module only (to dist/)"
 	@echo "  make umd       - Build UMD module only (to dist/)"
-	@echo "  make public    - Build ES6 module for GitHub Pages (to public/dist/)"
-	@echo "  make gh-pages  - Alias for 'make public' with completion message"
+	@echo "  make public         - Build ES6 module for GitHub Pages (to public/dist/)"
+	@echo "  make gh-pages      - Alias for 'make public' with completion message"
+	@echo "  make gh-pages-deploy - Build and deploy to GitHub Pages gh-pages branch"
+	@echo "  make gh-pages-publish - Alias for gh-pages-deploy"
 	@echo "  make clean     - Clean build artifacts"
 	@echo "  make deps      - Initialize submodules"
 	@echo "  make info      - Show this information"
