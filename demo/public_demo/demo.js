@@ -100,6 +100,9 @@ class SpeedyDemo {
 
         // Linear Reference checkbox
         const linearRefCheckbox = document.getElementById('linearRef');
+        // Initialize param from checkbox state
+        this.params.linearRefEnabled = linearRefCheckbox.checked;
+        this.waveformViewer.setLinearReferenceEnabled(linearRefCheckbox.checked);
         linearRefCheckbox.addEventListener('change', (e) => {
             this.params.linearRefEnabled = e.target.checked;
             this.waveformViewer.setLinearReferenceEnabled(e.target.checked);
