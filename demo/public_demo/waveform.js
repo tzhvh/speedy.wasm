@@ -77,6 +77,9 @@ export class WaveformViewer {
             targetBuffer: null
         };
 
+        // Speed reference line (from slider)
+        this.speedReference = null; // null or number
+
         this.onSeek = null; // Callback
         this.onZoom = null; // Callback when zoom changes (for UI sync)
         this.onModeChange = null; // Callback when mode changes
@@ -142,6 +145,11 @@ export class WaveformViewer {
             }
         }
 
+        this.draw();
+    }
+
+    setSpeedReference(speed) {
+        this.speedReference = speed;
         this.draw();
     }
 
@@ -1314,6 +1322,19 @@ export class WaveformViewer {
                 ctx.stroke();
             }
         });
+
+        // Speed reference line (from slider) - dashed line
+        if (this.speedReference !== null && this.speedReference >= row.minSpeed && this.speedReference <= row.maxSpeed) {
+            const refY = drawYTop + drawHeight * (1 - (this.speedReference - row.minSpeed) / speedRange);
+            ctx.strokeStyle = this.colors.text; // Use text color for visibility
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]); // Dashed line for reference
+            ctx.beginPath();
+            ctx.moveTo(0, refY);
+            ctx.lineTo(this.width, refY);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+        }
 
         ctx.restore();
     }

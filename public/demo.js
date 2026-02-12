@@ -38,8 +38,8 @@ class SpeedyDemo {
 
         // Waveform Viewer
         this.waveformViewer = new WaveformViewer(this.canvas);
-        
-        // Parameters
+
+        // Parameters (must be defined before setting speed reference)
         this.params = {
             speed: 2.0,
             nonlinear: 1.0,
@@ -54,6 +54,9 @@ class SpeedyDemo {
             speechChangeCapMultiplier: 4.0,
             linearRefEnabled: false
         };
+
+        // Initialize speed reference line with default value
+        this.waveformViewer.setSpeedReference(this.params.speed);
 
         // Track last processed parameters for staleness detection
         this.lastProcessedParams = null;
@@ -93,6 +96,10 @@ class SpeedyDemo {
             el.addEventListener('input', (e) => {
                 this.params[id] = parseFloat(e.target.value);
                 valEl.textContent = this.params[id] + (id === 'speed' ? 'x' : '');
+                // Update speed reference line in waveform viewer
+                if (id === 'speed' && this.waveformViewer) {
+                    this.waveformViewer.setSpeedReference(this.params.speed);
+                }
                 // Update processBtn ready state when params change
                 this.updateProcessBtnState();
             });
