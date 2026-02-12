@@ -578,6 +578,35 @@ class SpeedyDemo {
         document.getElementById('chunksProcessed').textContent = chunkCount;
     }
 
+    applySpeedyParams(sonicStream) {
+        if (typeof sonicStream.setSpeedyPreemphasisFactor === 'function') {
+            sonicStream.setSpeedyPreemphasisFactor(this.params.preemphasis);
+        }
+        if (typeof sonicStream.setSpeedyTensionWeights === 'function') {
+            sonicStream.setSpeedyTensionWeights(
+                this.params.tensionEnergyWeight,
+                this.params.tensionSpeechWeight
+            );
+        }
+        if (typeof sonicStream.setSpeedyTensionOffsets === 'function') {
+            sonicStream.setSpeedyTensionOffsets(
+                this.params.tensionEnergyOffset,
+                this.params.tensionSpeechOffset
+            );
+        }
+        if (typeof sonicStream.setSpeedyBinThresholdDivisor === 'function') {
+            sonicStream.setSpeedyBinThresholdDivisor(this.params.binThresholdDivisor);
+        }
+        if (typeof sonicStream.setSpeedyLowEnergyThresholdScale === 'function') {
+            sonicStream.setSpeedyLowEnergyThresholdScale(this.params.lowEnergyScale);
+        }
+        if (typeof sonicStream.setSpeedySpeechChangeCapMultiplier === 'function') {
+            sonicStream.setSpeedySpeechChangeCapMultiplier(
+                this.params.speechChangeCapMultiplier
+            );
+        }
+    }
+
     async processAndPlay() {
         if (!this.originalBuffer || this.isProcessing) return;
 
@@ -605,20 +634,7 @@ class SpeedyDemo {
             sonicProcessed.setSpeed(this.params.speed);
             sonicProcessed.enableNonlinearSpeedup(this.params.nonlinear);
             sonicProcessed.setDurationFeedbackStrength(this.params.feedback);
-            sonicProcessed.setSpeedyPreemphasisFactor(this.params.preemphasis);
-            sonicProcessed.setSpeedyTensionWeights(
-                this.params.tensionEnergyWeight,
-                this.params.tensionSpeechWeight
-            );
-            sonicProcessed.setSpeedyTensionOffsets(
-                this.params.tensionEnergyOffset,
-                this.params.tensionSpeechOffset
-            );
-            sonicProcessed.setSpeedyBinThresholdDivisor(this.params.binThresholdDivisor);
-            sonicProcessed.setSpeedyLowEnergyThresholdScale(this.params.lowEnergyScale);
-            sonicProcessed.setSpeedySpeechChangeCapMultiplier(
-                this.params.speechChangeCapMultiplier
-            );
+            this.applySpeedyParams(sonicProcessed);
             sonicProcessed.setupSpeedCallback();
 
             // Linear stream (nonlinear=0)
@@ -628,20 +644,7 @@ class SpeedyDemo {
                 sonicLinear.setSpeed(this.params.speed);
                 sonicLinear.enableNonlinearSpeedup(0);
                 sonicLinear.setDurationFeedbackStrength(this.params.feedback);
-                sonicLinear.setSpeedyPreemphasisFactor(this.params.preemphasis);
-                sonicLinear.setSpeedyTensionWeights(
-                    this.params.tensionEnergyWeight,
-                    this.params.tensionSpeechWeight
-                );
-                sonicLinear.setSpeedyTensionOffsets(
-                    this.params.tensionEnergyOffset,
-                    this.params.tensionSpeechOffset
-                );
-                sonicLinear.setSpeedyBinThresholdDivisor(this.params.binThresholdDivisor);
-                sonicLinear.setSpeedyLowEnergyThresholdScale(this.params.lowEnergyScale);
-                sonicLinear.setSpeedySpeechChangeCapMultiplier(
-                    this.params.speechChangeCapMultiplier
-                );
+                this.applySpeedyParams(sonicLinear);
                 sonicLinear.setupSpeedCallback();
             }
 
