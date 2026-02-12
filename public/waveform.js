@@ -121,11 +121,38 @@ export class WaveformViewer {
 
     setSpeedProfile(speedProfileData) {
         this.updateRowData('speedProfile', speedProfileData);
+
+        // Compute dynamic speed range from data
+        if (speedProfileData && speedProfileData.length >= 4) {
+            let minSpeed = Infinity;
+            let maxSpeed = -Infinity;
+            for (let i = 1; i < speedProfileData.length; i += 2) {
+                const speed = speedProfileData[i];
+                if (speed < minSpeed) minSpeed = speed;
+                if (speed > maxSpeed) maxSpeed = speed;
+            }
+
+            // Update row config with dynamic range
+            const speedProfileRow = this.rowConfig.find(r => r.id === 'speedProfile');
+            if (speedProfileRow) {
+                // Keep at least 0.5 as min to maintain baseline visibility
+                speedProfileRow.minSpeed = Math.min(minSpeed, 0.5);
+                // Ensure max is at least 1.0 and at least matches the data
+                speedProfileRow.maxSpeed = Math.max(maxSpeed, 1.0);
+            }
+        }
+
         this.draw();
     }
 
     setLinearReferenceEnabled(enabled) {
         this.linearReferenceEnabled = enabled;
+
+        // Preserve existing speed profile data and range when switching layouts
+        const existingSpeedProfileRow = this.rowConfig.find(r => r.id === 'speedProfile');
+        const existingData = existingSpeedProfileRow ? existingSpeedProfileRow.data : null;
+        const existingMinSpeed = existingSpeedProfileRow ? existingSpeedProfileRow.minSpeed : 0.5;
+        const existingMaxSpeed = existingSpeedProfileRow ? existingSpeedProfileRow.maxSpeed : 3.0;
 
         if (enabled) {
             // 4-row layout
@@ -133,14 +160,14 @@ export class WaveformViewer {
                 { id: 'original', type: 'waveform', heightRatio: 0.25, data: this.originalBuffer, color: 'origin' },
                 { id: 'processed', type: 'waveform', heightRatio: 0.25, data: this.processedBuffer, color: 'proc' },
                 { id: 'linear', type: 'waveform', heightRatio: 0.25, data: this.linearBuffer, color: 'linear' },
-                { id: 'speedProfile', type: 'lineChart', heightRatio: 0.25, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
+                { id: 'speedProfile', type: 'lineChart', heightRatio: 0.25, data: existingData, color: 'speed', minSpeed: existingMinSpeed, maxSpeed: existingMaxSpeed }
             ];
         } else {
             // 3-row layout (original)
             this.rowConfig = [
                 { id: 'original', type: 'waveform', heightRatio: 0.35, data: this.originalBuffer, color: 'origin' },
                 { id: 'processed', type: 'waveform', heightRatio: 0.35, data: this.processedBuffer, color: 'proc' },
-                { id: 'speedProfile', type: 'lineChart', heightRatio: 0.30, data: null, color: 'speed', minSpeed: 0.5, maxSpeed: 3.0 }
+                { id: 'speedProfile', type: 'lineChart', heightRatio: 0.30, data: existingData, color: 'speed', minSpeed: existingMinSpeed, maxSpeed: existingMaxSpeed }
             ];
         }
         this.draw();
