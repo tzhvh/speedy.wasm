@@ -525,8 +525,8 @@
 <body>
     <div class="app-container">
         <!-- Left Panel: Configuration -->
-        <div class="panel">
-            <div class="panel-header">
+        <div class="panel" style="overflow-y: auto;">
+            <div class="panel-header" style="position: sticky; top: 0; z-index: 10; background: var(--panel-header-bg);">
                 <div>
                     <h1>Configuration</h1>
                     <p>Speedy WASM Parameters</p>
@@ -641,19 +641,21 @@
                 </label>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color);">
-                <button id="processBtn" class="btn btn-primary" disabled
-                    style="height: 64px; width: 100%; font-size: 0.9rem; letter-spacing: 0.1em; font-weight: 700;">
-                    <div id="processingIndicator" class="spinner"
-                        style="display:none; margin-right:16px; border-width: 3px; width: 20px; height: 20px;"></div>
-                    INITIATE PROCESSING
-                </button>
-            </div>
+            <div style="position: sticky; bottom: 0; z-index: 10; background: var(--panel-bg); display: flex; flex-direction: column;">
+                <div style="border-top: 1px solid var(--border-color);">
+                    <button id="processBtn" class="btn btn-primary" disabled
+                        style="height: 64px; width: 100%; font-size: 0.9rem; letter-spacing: 0.1em; font-weight: 700;">
+                        <div id="processingIndicator" class="spinner"
+                            style="display:none; margin-right:16px; border-width: 3px; width: 20px; height: 20px;"></div>
+                        INITIATE PROCESSING
+                    </button>
+                </div>
 
-            <div id="statusLog" class="log-container">
-                <div class="log-entry">
-                    <span class="log-time">SYS</span>
-                    <span class="log-msg">Ready.</span>
+                <div id="statusLog" class="log-container" style="max-height: 120px;">
+                    <div class="log-entry">
+                        <span class="log-time">SYS</span>
+                        <span class="log-msg">Ready.</span>
+                    </div>
                 </div>
             </div>
         </div>
